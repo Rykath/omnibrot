@@ -105,6 +105,66 @@ int check_sizes(){
   return(0);
 }
 
+// --- CALCULATION --- //
+
+void hpn_add(struct HighPrecNum hpnA, struct HighPrecNum hpnB, struct HighPrecNum* hpnCptr){
+  // C = A + B
+	if (hpnA.neg == hpnB.neg){
+		// --- Addition --- //
+		hpnCptr->neg = hpnA.neg;
+    long buffer = 0;
+    for (int i=NUM_SIZE-1; i>=0; i--){
+      buffer += hpnA.digits[i] + hpnB.digits[i];
+      hpnCptr->digits[i] = buffer;
+      buffer = buffer >> 32;
+    }
+	}
+	else{
+	  // --- Subtraction --- //
+    struct HighPrecNum* hpnLptr;
+    struct HighPrecNum* hpnSptr;
+    char larger = hpn_larger(&hpnSptr, &hpnLptr, hpnA, 'A', hpnB, 'B');
+    if (larger == '='){
+      hpnCptr->neg = false;
+      for (int i=0; i<NUM_SIZE; i++){
+        hpnCptr->digits[i] = 0;
+      }
+      return;
+    }
+    hpnCptr->neg = hpnLptr->neg;
+    long buffer;
+    long carry = 0;
+    for (int i=NUM_SIZE-1; i>=0; i--){
+      buffer = carry + hpnSptr->digits[i];
+      carry = (hpnLptr->digits[i] < buffer);
+      hpnCptr->digits[i] = hpnLptr->digits[i] - buffer;
+    }
+  }
+}
+
+int test_hpn_add(double dA, double dB){
+  printf("TEST hpn_add\n");
+  printf(" C = A + B\n");
+  struct HighPrecNum hpnA;
+  struct HighPrecNum hpnB;
+  struct HighPrecNum hpnC;
+  double dC = dA + dB;
+  hpn_new(&hpnA);
+  hpn_new(&hpnB);
+  hpn_new(&hpnC);
+  hpn_from_double(&hpnA,dA);
+  hpn_from_double(&hpnB,dB);
+  printf(" dA : %f\n",dA);
+  printf("hpnA: %d %2X.%8X.%8X\n",hpnA.neg,hpnA.digits[0],hpnA.digits[1],hpnA.digits[2]);
+  printf(" dB : %f\n",dB);
+  printf("hpnB: %d %2X.%8X.%8X\n",hpnB.neg,hpnB.digits[0],hpnB.digits[1],hpnB.digits[2]);
+  printf(" dC : %f\n",dC);
+  hpn_add(hpnA,hpnB,&hpnC);
+  printf("hpnC: %d %2X.%8X.%8X\n",hpnC.neg,hpnC.digits[0],hpnC.digits[1],hpnC.digits[2]);
+  printf("TEST END\n");
+  return 0;
+}
+
 struct ComplexNum next_z_imag(struct ComplexNum posZo, struct ComplexNum posZ, struct ComplexNum posC){
   // posZo = old Z
   // posZ = preallocated slot for new Z - members of posZ.imag are modified
@@ -330,7 +390,7 @@ struct ComplexNum next_z_real(struct ComplexNum posZo, struct ComplexNum posZ, s
   return posZ;
 }
 
-int main(int argc, char *argv[]){
+int mainF(int argc, char *argv[]){
   // just one pixel
   // arguments: program max_iteration cr ci
   if (argc != 4 || check_sizes()){
@@ -382,3 +442,7 @@ int main(int argc, char *argv[]){
   ptrZ = &posZ2;
   printf("%2d: %d %X..%8X..%8X | %d %X..%8X..%8X\n",iteration,ptrZ->real.neg,ptrZ->real.digits[0],ptrZ->real.digits[1],ptrZ->real.digits[2],ptrZ->imag.neg,ptrZ->imag.digits[0],ptrZ->imag.digits[1],ptrZ->imag.digits[2]);
 }
+
+/*int main(int argc, char *argv[]){
+  mainF(argc,argv);
+}*/
