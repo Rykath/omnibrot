@@ -16,6 +16,16 @@
 // number of additional subunits during calculation
 #define CALC_SIZE_ADD 2
 
+// testing subunits
+// std: PART_* defined
+//      CHECK_* not defined
+#define PART_IMAG_I
+#define PART_IMAG_II
+#define PART_REAL_I
+#define PART_REAL_II
+#define PART_REAL_III
+#define CHECK_SEGFAULT
+
 // ----- CONSTANTS ----- //
 
 #define BIN32 4294967295 // 2^32-1
@@ -37,56 +47,50 @@ struct ComplexNum {
 
 // ----- LOCAL FUNCTIONS ----- //
 
-struct HighPrecNum hpn_new(){
-  struct HighPrecNum hpn;
-  hpn.neg = false;
-  hpn.digits = (unsigned int*) calloc(NUM_SIZE, sizeof(unsigned int));
-  return hpn;
+void hpn_new(struct HighPrecNum* hpn){
+  hpn->neg = false;
+  hpn->digits = (unsigned int*) calloc(NUM_SIZE, sizeof(unsigned int));
 }
 
-char hpn_larger(struct HighPrecNum* s, struct HighPrecNum* l, struct HighPrecNum num1, char c1, struct HighPrecNum num2, char c2){
+char hpn_larger(struct HighPrecNum** s, struct HighPrecNum** l, struct HighPrecNum num1, char c1, struct HighPrecNum num2, char c2){
   // determine larger High Precision Number
   // based on absolute values (.digits), ignoring sign (.neg)
   for (int i = 0; i < NUM_SIZE; i++){
     if (num1.digits[i] > num2.digits[i]){
-      *s = num2;
-      *l = num1;
+      *s = &num2;
+      *l = &num1;
       return c1;
     }
     else if (num1.digits[i] < num2.digits[i]){
-      *s = num1;
-      *l = num2;
+      *s = &num1;
+      *l = &num2;
       return c2;
     }
-    // default: s = num1, l = num2
-    *s = num1;
-    *l = num2;
-    return '=';
   }
+  // default: s = num1, l = num2
+  *s = &num1;
+  *l = &num2;
   return '=';
 }
 
-void hpn_from_double(struct HighPrecNum hpn, double number){
-  printf("%f \n",number);
+void hpn_from_double(struct HighPrecNum* hpnptr, double number){
   if (number == 0){
-    hpn.neg = false;
+    hpnptr->neg = false;
     for (int i = 0; i < NUM_SIZE; i++){
-      hpn.digits[i] = 0;
+      hpnptr->digits[i] = 0;
     }
     return;
   }
   else if (number > 0){
-    hpn.neg = false;
+    hpnptr->neg = false;
   }
   else {
-    printf("neg \n");
-    hpn.neg = true;
-    printf("%d \n",hpn.neg);
+    hpnptr->neg = true;
     number *= -1;
   }
   for (int i = 0; i < NUM_SIZE; i++){
-    hpn.digits[i] = (unsigned int) number;
-    number -= hpn.digits[i];
+    hpnptr->digits[i] = (unsigned int) number;
+    number -= hpnptr->digits[i];
     number *= BIN33;
   }
 }
@@ -101,19 +105,20 @@ int check_sizes(){
   return(0);
 }
 
-void next_z_imag(struct ComplexNum posZo, struct ComplexNum posZ, struct ComplexNum posC){
+struct ComplexNum next_z_imag(struct ComplexNum posZo, struct ComplexNum posZ, struct ComplexNum posC){
   // posZo = old Z
   // posZ = preallocated slot for new Z - members of posZ.imag are modified
   // posC = C
   unsigned long buffer;
   unsigned long carry_s; // small carry - 64 bit long, usually filled 32 bit, same position as buffer
   unsigned long carry_l; // large carry - 64 bit long, usually filled 32 bit, shifted 32 bits left from buffer
-  struct HighPrecNum* ptr_s = 0; // pointer to smaller number
-  struct HighPrecNum* ptr_l = 0; // pointer to larger number
+  struct HighPrecNum* ptr_s = NULL; // pointer to smaller number
+  struct HighPrecNum* ptr_l = NULL; // pointer to larger number
   char larger;
 
   // Z.i = 2 * Zo.r * Zo.i + C.i
-
+  
+  #ifdef PART_IMAG_I
   // --- I --- //
   // Z.i = 2 * Zo.r * Zo. i
   posZ.imag.neg = (posZo.imag.neg != posZo.real.neg);
@@ -124,29 +129,36 @@ void next_z_imag(struct ComplexNum posZo, struct ComplexNum posZ, struct Complex
       if (i >= NUM_SIZE || p-i >= NUM_SIZE){
         continue;
       }
-      buffer = posZo.real.digits[i] * posZo.imag.digits[p-i];
+      buffer = posZo.real.digits[i];
+      buffer *= posZo.imag.digits[p-i];
       carry_l += (buffer >> 32) << 1;
       carry_s += (buffer & BIN32) << 1;
+      //printf("posZ.imag-buffer: %d %d | %10u x %10u > %20lu == %20lu == %20lu\n",i,p-i,posZo.real.digits[i],posZo.imag.digits[p-i],buffer,carry_l,carry_s);
     }
+    #ifdef PART_IMAG_II
     // --- II.a --- //
     // if Z.i and C.i have same sign
     // Z.i += C.i
     if (posZ.imag.neg == posC.imag.neg && p < NUM_SIZE){
       carry_s += posC.imag.digits[p];
     }
+    #endif
     // --- I cont. --- //
     carry_l += carry_s >> 32; // add overflow of carry_s to carry_l
     if (p < NUM_SIZE){
       posZ.imag.digits[p] = carry_s; // only last 32 bits are copied anyway
+      //printf("posZ.imag: %d | %10u == %20lu\n",p,posZ.imag.digits[p],carry_s);
     }
     carry_s = carry_l;
     carry_l = 0;
   }
+  #endif
+  #ifdef PART_IMAG_II
   // --- II.b --- //
   // if Z.i and C.i have opposite sign
   // Z.i += C.i
   if (posZ.imag.neg != posC.imag.neg){
-    larger = hpn_larger(ptr_s, ptr_l, posZ.imag, 'Z', posC.imag, 'C');
+    larger = hpn_larger(&ptr_s, &ptr_l, posZ.imag, 'Z', posC.imag, 'C');
     // if Z.i == C.i
     if (larger == '='){
       for (int p = 0; p < NUM_SIZE; p++){
@@ -172,24 +184,27 @@ void next_z_imag(struct ComplexNum posZo, struct ComplexNum posZ, struct Complex
       posZ.imag.neg = !posZ.imag.neg;
     }
   }
+  #endif
+  return posZ;
 }
 
-void next_z_real(struct ComplexNum posZo, struct ComplexNum posZ, struct ComplexNum posC){
+struct ComplexNum next_z_real(struct ComplexNum posZo, struct ComplexNum posZ, struct ComplexNum posC){
   // posZo = old Z
   // posZ = preallocated slot for new Z - members of posZ.real are modified
   // posC = C
   unsigned long buffer;
   unsigned long carry_s; // small carry
   unsigned long carry_l; // large carry
-  struct HighPrecNum* ptr_s = 0; // pointer to smaller number
-  struct HighPrecNum* ptr_l = 0;; // pointer to larger number
+  struct HighPrecNum* ptr_s = NULL; // pointer to smaller number
+  struct HighPrecNum* ptr_l = NULL; // pointer to larger number
   char larger;
 
   // Z.r = Zo.r^2 - Zo.i^2 + C.r
 
   // --- I --- //
   // Z.r = Zo.larger^2
-  larger = hpn_larger(ptr_s, ptr_l, posZo.real, 'r', posZo.imag, 'i');
+  larger = hpn_larger(&ptr_s, &ptr_l, posZo.real, 'r', posZo.imag, 'i');
+  printf("%c %8X %8X | %8X %8X\n",larger,ptr_l->digits[1],ptr_s->digits[1],posZo.real.digits[1],posZo.imag.digits[1]);
   if (larger == '='){
     // --- II.a --- //
     // Z.r = C.r
@@ -208,13 +223,16 @@ void next_z_real(struct ComplexNum posZo, struct ComplexNum posZ, struct Complex
     }
     carry_s = 0;
     carry_l = 0;
+    //printf("%u.%u.%u.%u\n",(ptr_l->digits)[0],(ptr_l->digits)[1],(ptr_l->digits)[2],(ptr_l->digits)[3]);
+    #ifdef PART_REAL_I
     for (int p = NUM_SIZE+CALC_SIZE_ADD-1; p >= 0; p--){
       // larger^2
       for (int i = 0; i <= p/2; i++){
         if (i >= NUM_SIZE || p-i >= NUM_SIZE){
 	  continue;
 	}
-	buffer = ptr_l->digits[i] * ptr_l->digits[p-i];
+	buffer = ptr_l->digits[i];
+	buffer *= ptr_l->digits[p-i];
         if (2*i == p){
 	  carry_l += buffer >> 32;
           carry_s += buffer & BIN32;
@@ -223,27 +241,47 @@ void next_z_real(struct ComplexNum posZo, struct ComplexNum posZ, struct Complex
 	  carry_l += (buffer >> 32) << 1;
 	  carry_s += (buffer & BIN32) << 1;
 	}
+        //printf("p:%d i:%d d(%d):%u d(%d):%u buf:%lu cl:%lu cs:%lu\n",p,i,i,(ptr_l->digits)[i],p-i,(ptr_l->digits)[p-i],buffer,carry_l,carry_s);
+        printf("posZ.real-buffer: %d %d | %8X x %8X > %16lX == %16lX == %16lX\n",i,p-i,ptr_l->digits[i],ptr_l->digits[p-i],buffer,carry_l,carry_s);
       }
       // --- II.b --- //
+      #ifdef PART_REAL_II
       // C.r has same sign as larger
       if (posC.real.neg == ptr_l->neg && p < NUM_SIZE){
         carry_s += posC.real.digits[p];
       }
+      #endif
       // --- I cont. --- //
       carry_l += carry_s >> 32;
-      posZ.real.digits[p] = carry_s;
+      //printf("r.carry_s: %lu\n",carry_s);
+      if (p < NUM_SIZE){
+        posZ.real.digits[p] = carry_s;
+        printf("posZ.real: %d | %8X == %16lX\n",p,posZ.real.digits[p],carry_s);
+      }
       carry_s = carry_l;
+      carry_l = 0;
     }
+    #endif
+    //printf("r.larger^2(+c.r): %d %u..%10u \n",posZ.real.neg,posZ.real.digits[0],posZ.real.digits[1]);
     // --- III --- //
     // Z.r -= Zo.smaller^2
     carry_s = 0;
     carry_l = 0;
+    #ifdef PART_REAL_III
+    printf("posZ.real-smaller: %d %8X.%8X.%8X.%8X\n",ptr_s->neg,ptr_s->digits[0],ptr_s->digits[1],ptr_s->digits[2],ptr_s->digits[3]);
     for (int p = NUM_SIZE+CALC_SIZE_ADD-1; p >= 0; p--){
+      #ifdef CHECK_SEGFAULT
+      printf("check p %d\n",p);
+      #endif
       for (int i = 0; i <= p/2; i++){
+        #ifdef CHECK_SEGFAULT
+	printf("check i %d\n",i);
+	#endif
         if (i >= NUM_SIZE || p-i >= NUM_SIZE){
 	  continue;
 	}
-	buffer = ptr_s->digits[i] * ptr_s->digits[p-i];
+	buffer = ptr_s->digits[i];
+	buffer *= ptr_s->digits[p-i];
 	if (2*i == p){
 	  carry_l += buffer >> 32;
 	  carry_s += buffer & BIN32;
@@ -252,22 +290,32 @@ void next_z_real(struct ComplexNum posZo, struct ComplexNum posZ, struct Complex
 	  carry_l += (buffer >> 32) << 1;
 	  carry_s += (buffer & BIN32) << 1;
 	}
+	printf("posZ.real-buffer: %d %d | %8X x %8X > %16lX == %16lX == %16lX\n",i,p-i,ptr_s->digits[i],ptr_s->digits[p-i],buffer,carry_l,carry_s);
       }
+      #ifdef CHECK_SEGFAULT
+      printf("check II.c\n");
+      #endif
       // --- II.c --- //
+      #ifdef PART_REAL_II
       // C.r has same sign as smaller
       if (posC.real.neg == ptr_s->neg && p < NUM_SIZE){
         carry_s += posC.real.digits[p];
       }
+      #endif
       // --- III cont. --- //
       carry_l += carry_s >> 32;
       carry_s = carry_s & BIN32;
-      if (posZ.real.digits[p] < carry_s){
-        carry_l += 1;
+      if (p < NUM_SIZE){
+        if (posZ.real.digits[p] < carry_s){
+          carry_l += 1;
+        }
+        posZ.real.digits[p] -= carry_s;
+        printf("posZ.real: %d | %8X == %16lX\n",p,posZ.real.digits[p],carry_s);
       }
-      posZ.real.digits[p] -= carry_s;
       carry_s = carry_l;
       carry_l = 0;
     }
+    #endif
     if (carry_s != 0){ // Zo.smaller^2 + C.r > Zo.larger^2
       posZ.real.neg = !posZ.real.neg; // switch sign
       buffer = 1;
@@ -278,17 +326,59 @@ void next_z_real(struct ComplexNum posZo, struct ComplexNum posZ, struct Complex
       }
     }
   }
+//  printf("next real: %d %u..%10u \n",posZ.real.neg,posZ.real.digits[0],posZ.real.digits[1]);
+  return posZ;
 }
 
-int calc_escape_iteration(int max_iteration, double startCr, double endCr, int lenCr, double startCi, double endCi, int lenCi, int cr, int ci){
-  int iteration = 0;
-  struct HighPrecNum posCr = hpn_new();
-  hpn_from_double(posCr, startCr + cr*(endCr-startCr)/lenCr);
-  struct HighPrecNum posCi = hpn_new();
-  hpn_from_double(posCi, startCi + ci*(endCi-startCi)/lenCi);
-  printf("%d %u %u - %d %u %u \n", posCr.neg, posCr.digits[0], posCr.digits[1], posCi.neg, posCi.digits[0], posCi.digits[1]);
-  if (posCr.neg == true){
-    printf("ok \n");
+int main(int argc, char *argv[]){
+  // just one pixel
+  // arguments: program max_iteration cr ci
+  if (argc != 4 || check_sizes()){
+    return -1;
   }
-  return iteration;
+  int iteration_max = atoi(argv[1]);
+  int iteration;
+  struct ComplexNum posC;
+  hpn_new(&(posC.real));
+  hpn_new(&(posC.imag));
+  hpn_from_double(&(posC.real), atof(argv[2]));
+  hpn_from_double(&(posC.imag), atof(argv[3]));
+  struct ComplexNum posZ1;
+  hpn_new(&(posZ1.real));
+  hpn_new(&(posZ1.imag));
+  hpn_from_double(&(posZ1.real), atof(argv[2]));
+  hpn_from_double(&(posZ1.imag), atof(argv[3]));
+  struct ComplexNum posZ2;
+  hpn_new(&(posZ2.real));
+  hpn_new(&(posZ2.imag));
+  struct ComplexNum* ptrZ = &posZ1;
+  /*
+  for (iteration = 0; iteration < iteration_max; iteration++){
+    printf("%2d: %d %u..%10u..%10u | %d %u..%10u..%10u\n",iteration,ptrZ->real.neg,ptrZ->real.digits[0],ptrZ->real.digits[1],ptrZ->real.digits[2],ptrZ->imag.neg,ptrZ->imag.digits[0],ptrZ->imag.digits[1],ptrZ->imag.digits[2]);
+    if (ptrZ->real.digits[0]*ptrZ->real.digits[0]+ptrZ->imag.digits[0]*ptrZ->imag.digits[0] > 4){
+      //printf("%d\n",iteration);
+      return iteration;
+    }
+    if (iteration % 2 == 0){
+      posZ2 = next_z_real(posZ1,posZ2,posC);
+      posZ2 = next_z_imag(posZ1,posZ2,posC);
+      ptrZ = &posZ2;
+    }
+    else{
+      posZ1 = next_z_real(posZ2,posZ1,posC);
+      posZ1 = next_z_imag(posZ2,posZ1,posC);
+      ptrZ = &posZ1;
+    }
+  }
+  //printf("max\n");
+  return iteration_max;
+  */
+  printf("iteration: negative real-value | negative imaginary-value\n");
+  iteration = 0;
+  printf("%2d: %d %X..%8X..%8X | %d %X..%8X..%8X\n",iteration,ptrZ->real.neg,ptrZ->real.digits[0],ptrZ->real.digits[1],ptrZ->real.digits[2],ptrZ->imag.neg,ptrZ->imag.digits[0],ptrZ->imag.digits[1],ptrZ->imag.digits[2]);
+  iteration += 1;
+  posZ2 = next_z_imag(posZ1,posZ2,posC);
+  posZ2 = next_z_real(posZ1,posZ2,posC);
+  ptrZ = &posZ2;
+  printf("%2d: %d %X..%8X..%8X | %d %X..%8X..%8X\n",iteration,ptrZ->real.neg,ptrZ->real.digits[0],ptrZ->real.digits[1],ptrZ->real.digits[2],ptrZ->imag.neg,ptrZ->imag.digits[0],ptrZ->imag.digits[1],ptrZ->imag.digits[2]);
 }

@@ -1,0 +1,41 @@
+\chapter{deepixel}
+\section{notes}
+\begin{itemize}
+  \item $int$ should be $4 bytes$
+  \item $long$ should be $8 bytes$
+\end{itemize}
+\section{variables}
+\begin{itemize}
+  \item cr - position of the starting point, real component - $pointer to unsigned int array with length <num_size>$
+  \item ci - position of the starting point, imaginary component - $pointer to unsigned int array with length <num_size>$
+  \item zr, zi, zr_old, zi_old, cr_neg ...
+  \item $buffer$ - holds results of operations with $unsigned int$ - $unsigned long$
+  \item $carry_s$ - carry small, holds small component of summed operations
+  \item $carry_l$ - carry large, holds large component of summed operations
+\end{itemize}
+
+\section{macros}
+\subsection{settings}
+\begin{itemize}
+  \item NUM_SIZE - number of integers per variable - $int > 0$
+\end{itemize}
+
+\subsection{constants}
+\begin{itemize}
+  \item BIN32 - $4294967295 = 2^32-1$, binary: 32 digits of 1
+  \item BIN33 - $4294967295 = 2^32$
+\end{itemize}
+
+\section{algorithm}
+\subsection{calculating: $zi$}
+The standard formula would be:
+\begin{equation} \label(eq:zi-std)
+zi = 2 \cdot zr \cdot zi + ci
+\end{equation}
+The algorithm starts by filling the $zi array$ from small to large. In order to get the highest precision we start 2 positions before the begin of the significant data. The steps of the calculation:
+\begin{enumerate}
+  \item If $zi_old$ and $zr_old$ have different signs, $zi_neg$ is set $true$ for now.
+  \item Multiply the components of $zr_old$ and $zi_old$ which fit the current position. Store result in the buffer.
+  \item Transfer the buffer into the large and small carry, while multiplying them with 2. $buffer >> 32$ shifts the buffer by half its size, leaving us with the large part moved to the right. $buffer & BIN32$ leaves us with just the small part as the bitwise and eliminates all the larger bits.
+  \item If $ci$ and $zi$ have the same sign, we can just add them together. If they don't, it gets a bit trickier.
+\end{enumerate}
