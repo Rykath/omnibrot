@@ -40,7 +40,11 @@
 // High Precision Number - HPN
 struct HighPrecNum {
   bool neg;
-  INT* digits;
+  INT* digits; // len: NUM_SIZE
+};
+
+struct HighPrecNumCarry {
+  INT2* digits; // len: NUM_SIZE + CALC_SIZE
 };
 
 // Complex Number, consisting of 2 High Precision Numbers
@@ -54,6 +58,12 @@ struct ComplexNum {
 void hpn_new(struct HighPrecNum* hpn){
   hpn->neg = false;
   hpn->digits = (INT*) calloc(NUM_SIZE, sizeof(INT));
+  // <PERFORMANCE> calloc might be a little bit slower but initializes the memory
+}
+
+void hpnc_new(struct HighPrecNumCarry* hpnc){
+  hpnc->digits = (INT2*) calloc(NUM_SIZE+CALC_SIZE,sizeof(INT2));
+  // <PERFORMANCE> calloc might be a little bit slower but initializes the memory, init to 0 is important here! carry just adds to the value, no init to 0!
 }
 
 char hpn_larger(struct HighPrecNum** s, struct HighPrecNum** l, struct HighPrecNum num1, char c1, struct HighPrecNum num2, char c2){
@@ -184,7 +194,6 @@ void hpn_mult(struct HighPrecNum hpnA, struct HighPrecNum hpnB, struct HighPrecN
       }
       buffer = hpnA.digits[i];
       buffer *= hpnB.digits[sum-i];
-      //printf("sum: %1d c1:%16lX c0:%16lX b:%16lX = i:%1d:%8X x i2:%1d:%8X \n",sum,carry1,carry0,buffer,i,hpnA.digits[i],sum-i,hpnB.digits[sum-i]);
       carry0 += buffer & INT_FULL;   // bitwise AND -- lower INT
       carry1 += buffer >> INT_BITS;  // higher INT
     }
@@ -195,6 +204,38 @@ void hpn_mult(struct HighPrecNum hpnA, struct HighPrecNum hpnB, struct HighPrecN
     carry0 = carry1;
     carry1 = carry0 >> INT_BITS;
     carry0 = carry0 & INT_FULL;
+  }
+}
+
+void hpn_mult_lc(struct HighPrecNum hpnA, struct HighPrecNum hpnB, struct HighPrecNum* hpnCptr){
+  // C = A * B
+  hpnCptr->neg = hpnA.neg != hpnB.neg;
+  INT2 buffer;
+  struct HighPrecNumCarry hpncarry;
+  hpnc_new(&hpncarry);
+  INT2* carry = hpncarry.digits;
+  for (int sum=NUM_SIZE+CALC_SIZE-1; sum >= 0; sum--){
+    for (int i=0; i<=sum; i++){
+      if (sum-i >= NUM_SIZE || i >= NUM_SIZE){
+        continue;
+      }
+      buffer = hpnA.digits[i];
+      buffer *= hpnB.digits[sum-i];
+      if (sum != 0){
+        carry[sum] += buffer & INT_FULL;   // bitwise AND -- lower INT
+        carry[sum-1] += buffer >> INT_BITS;  // higher INT
+      }
+      else{
+        carry[sum] += buffer;
+      }
+    }
+    if (sum < NUM_SIZE){
+      hpnCptr->digits[sum] = carry[sum] & INT_FULL;
+    }
+    if (sum != 0){
+      carry[sum-1] += carry[sum] >> INT_BITS;
+      carry[sum] = carry[sum] & INT_FULL;
+    }
   }
 }
 
@@ -214,7 +255,10 @@ int test_hpn_mult(double dA, double dB){
   printf(" B | %11.8f | %d %2X.%8X.%8X\n",dB,hpnB.neg,hpnB.digits[0],hpnB.digits[1],hpnB.digits[2]);
   hpn_mult(hpnA,hpnB,&hpnC);
   printf(" C | %11.8f | %d %2X.%8X.%8X\n",dC,hpnC.neg,hpnC.digits[0],hpnC.digits[1],hpnC.digits[2]);
+  hpn_mult_lc(hpnA,hpnB,&hpnC);
+  printf("Clc| %11.8f | %d %2X.%8X.%8X\n",dC,hpnC.neg,hpnC.digits[0],hpnC.digits[1],hpnC.digits[2]);
   printf("TEST END\n");
   return 0;
 }
+
 
