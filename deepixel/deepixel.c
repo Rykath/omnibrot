@@ -9,6 +9,7 @@
 #include <stdbool.h> // boolean variables
 #include <stdlib.h> // calloc
 #include <stdint.h> // int types
+#include <math.h> // ceil
 
 // ----- CONFIGURATION ----- //
 
@@ -261,4 +262,83 @@ int test_hpn_mult(double dA, double dB){
   return 0;
 }
 
+bool hpn_square1(int sum, struct HighPrecNum hpnA, struct* HighPrecNumCarry hpncarry, bool subtract){
+  INT2 buffer;
+  bool x2;
+  for (int i=0; i<=sum/2; i++){
+    if (sum-i) >= NUM_SIZE || i >= NUM_SIZE){
+      continue;
+    }
+    buffer = hpnA.digits[i];
+    buffer *= hpnA.digits[sum-i];
+    x2 = (2*i != sum);
+    if (sum == 0){
+      carry[sum] += buffer << x2;
+    }
+    else{
+      
+      carry[sum] += (buffer & INT_FULL) << x2;
+      carry[sum-1] += (buffer >> INT_BITS) << x2;
+    }
+  }
+}
 
+void next_cr(struct ComplexNum C, struct ComplexNum Z, struct ComplexNum Zn){
+  // Zni = Zr^2 - Zi^2 + Ci
+  struct HighPrecNumCarry carry;
+  for (int sum=NUM_SIZE+CALC_SIZE-1; sum >= 0; sum--){
+    
+  }
+}
+
+int next_iter(struct ComplexNum C, struct ComplexNum Z, struct ComplexNum Zn){
+  //= ALGORITHM =//
+  // if zr2 + zi2 > 4: retval = 1 // approximation: just looking at the first 2 digits each
+  // znr = zr2 - zi2 + cr
+  // zni = 2*zr*zi + ci
+  //= INIT =//
+  retval = 0;
+  struct HighPrecNumCarry hpnc_zr2;
+  hpnc_new(&hpnc_zr2);
+  INT2* zr2 = hpnc_zr2.digits;
+  struct HighPrecNumCarry hpnc_zi2;
+  hpnc_new(&hpnc_zi2);
+  INT2* zi2 = hpnc_zi2.digits;
+  INT2 buffer;
+  INT2 buffer2;
+  bool shift;
+  //= CALC =//
+  // ZR2, ZI2
+  for (int sum=NUM_SIZE+CALC_SIZE-1; sum >= 0; sum--){
+    for (int i=0; i<=ceil(sum/2); i++){
+      if (sum-i >= NUM_SIZE || i >= NUM_SIZE){
+        continue;
+      }
+      buffer = Z->real.digits[i];
+      buffer *= Z->real.digits[sum-i];
+      buffer2 = Z->imag.digits[i];
+      buffer2 *= Z->imag.digits[sum-i];
+      shift = (sum-i != i);
+      if (sum != 0){
+        zr2[sum] += (buffer & INT_FULL) << shift;   // bitwise AND -- lower INT
+        zr2[sum-1] += (buffer >> INT_BITS) << shift;  // higher INT
+        zi2[sum] += (buffer2 & INT_FULL) << shfit;
+        zi2[sum-1] += (buffer2 >> INT_BITS) << shfit;
+      }
+      else{
+        zr2[sum] += buffer << shift;
+        zi2[sum] += buffer2 << shift;
+      }
+    }
+    if (sum != 0){
+      zr2[sum-1] += zr2[sum] >> INT_BITS;
+      zr2[sum] = zr2[sum] & INT_FULL;
+      zi2[sum-1] += zi2[sum] >> INT_BITS;
+      zi2[sum] = zi2[sum] & INT_FULL;
+    }
+  }
+  // ZR2 + ZI2 > 4
+  retval = (zr2[0]+zi2[0] + (zr2[1]+zi2[1]) >> INT_BITS > 4);
+  // TODO
+  // TODO
+}
