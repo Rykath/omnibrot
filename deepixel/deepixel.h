@@ -16,4 +16,6 @@ int test_hpn_mult(double,double);
 
 int calc_escape_iteration(int,double,double,int,double,double,int,int,int);
 
+int test_next_iteration(double,double,double,double);
+
 #endif

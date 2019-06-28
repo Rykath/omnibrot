@@ -7,8 +7,11 @@
 
 #include "../deepixel.h"
 
+#define EXCLUDED
+
 int main(){
   double a, b;
+  #ifndef EXCLUDED
   // === HighPrecisionNumbers === //
   // --- Addition & Subtraction --- //
   printf("HPN - Addition & Subtraction - 8 Tests \n");
@@ -30,4 +33,12 @@ int main(){
   printf("T2-mltR : %d\n",test_hpn_mult(b,a));
   printf("T3-mltN : %d\n",test_hpn_mult(a*(-1),b));
   printf("T4-mltNN: %d\n",test_hpn_mult(a*(-1),b*(-1)));
+  #endif
+  // === Next Iteration === //
+  printf("Next Iteration \n");
+  cr =  1.3255037518
+  ci =  1.2550952765
+  zr = -0.8182940918
+  zi =  0.6892104001
+  printf("T1: %d\n",test_next_iteration(zr,zi,cr,ci));
 }
