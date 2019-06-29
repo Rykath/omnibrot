@@ -33,9 +33,9 @@
 #define INT uint32_t  // unsigned base type
 #define INT2 uint64_t // unsigned buffer to store INT, twice as big as INT
 #define INT2S int64_t // signed buffer, same size as INT2
-#define INT_BITS 32 // number of bits of INT
-#define INT_FULL 4294967295 // 2^32-1 -- 32 bits of 1 = 0x FFFF FFFF
-#define INT_SIZE  4294967296 // 2^32   -- number of values of 32 bits = 0x 1 0000 0000
+#define INT_BITS 32u // number of bits of INT
+#define INT_FULL 4294967295u // 2^32-1 -- 32 bits of 1 = 0x FFFF FFFF
+#define INT_SIZE  4294967296u // 2^32   -- number of values of 32 bits = 0x 1 0000 0000
 
 // ----- STRUCTS <LOCAL> ----- //
 
@@ -61,6 +61,7 @@ typedef struct ComplexNum {
 
 // ----- LOCAL FUNCTIONS ----- //
 
+#ifndef EXCLUDED
 void hpn_new(struct HighPrecNum* hpn){
   hpn->neg = false;
   hpn->digits = (INT*) calloc(NUM_SIZE, sizeof(INT));
@@ -92,6 +93,7 @@ char hpn_larger(struct HighPrecNum** s, struct HighPrecNum** l, struct HighPrecN
   *l = &num2;
   return '=';
 }
+#endif
 
 void hpn_from_double(struct HighPrecNum* hpnptr, double number){
   if (number == 0){
@@ -128,14 +130,18 @@ int check_sizes(){
 
 // === RESTART - Jun 2019 === //
 
-struct ComplexNum next_iteration(struct ComplexNum Z, struct ComplexNum C){
+ComplexNum next_iteration(ComplexNum Z, ComplexNum C){
   INT2 bufferR, bufferI, bufferRI;
   struct HPNSignedCarry cR, cI;
   bool negRI = Z.real.neg ^ Z.imag.neg;
+  INT2S* carryR = cR.digits;
+  INT2S* carryI = cI.digits;
+  bool x2;
+  ComplexNum Zn;
   
   for (int sum = NUM_SIZE+CALC_SIZE-1; sum >= 0; sum--){        //  loop carry
     for (int i = 0; i <= sum; i++){                             //    loop multiplication
-      if (sum-i_ >= NUM_SIZE || i >= NUM_SIZE){ continue; }     //      catch borders
+      if (sum-i >= NUM_SIZE || i >= NUM_SIZE){ continue; }      //      catch borders
       if (i <= sum/2){                                          //      reduced loop for squaring Zr and Zi - calculate Zr
         bufferR = Z.real.digits[i];
         bufferR *= Z.real.digits[sum-i];
@@ -143,8 +149,8 @@ struct ComplexNum next_iteration(struct ComplexNum Z, struct ComplexNum C){
         bufferI *= Z.imag.digits[sum-i];
         x2 = (2*i != sum);                                      //      binomial formula, x2 for all non-squares
         if (sum == 0){
-          carryR[sum] += bufferR << x2;
-          carryR[sum] -= bufferI << x2;
+          carryR[sum] += bufferR * x2;
+          carryR[sum] -= bufferI * x2;
         }
         else {
           carryR[sum] += (bufferR & INT_FULL) << x2;
@@ -156,17 +162,17 @@ struct ComplexNum next_iteration(struct ComplexNum Z, struct ComplexNum C){
       bufferRI = Z.real.digits[i];                              //      multiplying Zr and Zi - calculate Zi
       bufferRI *= Z.imag.digits[sum-i];
       if (sum == 0){
-        if (negRI){ carryI[sum] -= bufferRI << 1;}
-        else {      carryI[sum] += bufferRI << 1;}
+        if (negRI){ carryI[sum] -= bufferRI << 1u;}
+        else {      carryI[sum] += bufferRI << 1u;}
       }
       else {
         if (negRI){
-          carryI[sum] -= (bufferRI & INT_FULL) << 1;
-          carryI[sum-1] -= (bufferRI >> INTBITS) << 1;
+          carryI[sum] -= (bufferRI & INT_FULL) << 1u;
+          carryI[sum-1] -= (bufferRI >> INT_BITS) << 1u;
         }
         else {
-          carryI[sum] += (bufferRI & INT_FULL) << 1;
-          carryI[sum-1] += (bufferRI >> INTBITS) << 1;
+          carryI[sum] += (bufferRI & INT_FULL) << 1u;
+          carryI[sum-1] += (bufferRI >> INT_BITS) << 1u;
         }
       }
     }
@@ -184,26 +190,67 @@ struct ComplexNum next_iteration(struct ComplexNum Z, struct ComplexNum C){
         carryI[sum] += C.imag.digits[sum];
       }
     }
-    printf("sum: %s: %+16X %+16X\n",sum,carryR[sum],carryI[sum]);
+    printf("sum: %d: %ld %ld\n",sum,carryR[sum],carryI[sum]);
+    if (sum != 0) {                                              // Reducing Carry and converting to positive
+      if (carryR[sum] < 0) {
+        carryR[sum - 1] -= (INT2) labs(carryR[sum]) >> INT_BITS;
+        carryR[sum] = (INT2) labs(carryR[sum]) & INT_FULL;
+        if (carryR[sum] > 0) {
+          carryR[sum - 1] -= 1;
+          carryR[sum] = INT_SIZE - carryR[sum];
+        }
+      } else {
+        carryR[sum - 1] += (INT2) carryR[sum] >> INT_BITS;
+        carryR[sum] = (INT2) carryR[sum] & INT_FULL;
+      }
+      if (carryI[sum] < 0) {
+        carryI[sum - 1] -= (INT2) labs(carryI[sum]) >> INT_BITS;
+        carryI[sum] = (INT2) labs(carryI[sum]) & INT_FULL;
+        if (carryI[sum] > 0) {
+          carryI[sum - 1] -= 1;
+          carryI[sum] = INT_SIZE - carryI[sum];
+        }
+      } else {
+        carryI[sum - 1] += (INT2) carryI[sum] >> INT_BITS;
+        carryI[sum] = (INT2) carryI[sum] & INT_FULL;
+      }
+    }
   }
-  return Z;
+  Zn.real.neg = (carryR[0] < 0);            // Inverting if negative and converting to Zn
+  Zn.imag.neg = (carryI[0] < 0);
+  for (int i = NUM_SIZE-1; i >= 0; i--){
+     if (Zn.real.neg && carryR[i] > 0){
+       carryR[i] = -1*carryR[i];
+       carryR[i-1] += 1;
+     }
+     Zn.real.digits[i] = labs(carryR[i]);
+     if (Zn.imag.neg && carryI[i] > 0){
+       carryI[i] = -1*carryI[i];
+       carryI[i-1] += 1;
+     }
+     Zn.imag.digits[i] = labs(carryI[i]);
+  }
+  return Zn;
 }
 
 int test_next_iteration(double Zr, double Zi, double Cr, double Ci){
   // format assuming INT_SIZE = 32 bits
   printf("TEST next_iteration\n");
-  struct ComplexNum Z, C;
+  ComplexNum Z, C, Zn;
   hpn_from_double(&Z.real,Zr);
   hpn_from_double(&Z.imag,Zi);
   hpn_from_double(&C.real,Cr);
   hpn_from_double(&C.imag,Ci);
-  next_iteration(Z,C);
+  Zn = next_iteration(Z,C);
+  printf("Zn_r: %d %2X.%8X.%8X\n",Zn.real.neg,Zn.real.digits[0],Zn.real.digits[1],Zn.real.digits[2]);
+  printf("Zn_i: %d %2X.%8X.%8X\n",Zn.imag.neg,Zn.imag.digits[0],Zn.imag.digits[1],Zn.imag.digits[2]);
   printf("TEST END\n");
   return 0;
 }
 
 // === RESTART - END === //
 
+#ifndef EXCLUDED
 // --- CALCULATION --- //
 
 void hpn_add(struct HighPrecNum hpnA, struct HighPrecNum hpnB, struct HighPrecNum* hpnCptr){
@@ -345,7 +392,6 @@ int test_hpn_mult(double dA, double dB){
   return 0;
 }
 
-#ifndef EXCLUDED
 bool hpn_square1(int sum, struct HighPrecNum hpnA, struct HighPrecNumCarry hpncarry*, bool subtract){
   INT2 buffer;
   bool x2;

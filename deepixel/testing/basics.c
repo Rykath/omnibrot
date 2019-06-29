@@ -36,9 +36,9 @@ int main(){
   #endif
   // === Next Iteration === //
   printf("Next Iteration \n");
-  cr =  1.3255037518
-  ci =  1.2550952765
-  zr = -0.8182940918
-  zi =  0.6892104001
+  double cr =  1.3255037518;
+  double ci =  1.2550952765;
+  double zr = -0.8182940918;
+  double zi =  0.6892104001;
   printf("T1: %d\n",test_next_iteration(zr,zi,cr,ci));
 }
