@@ -10,9 +10,9 @@
 #define EXCLUDED
 
 int main(){
-  double a, b;
-  #ifndef EXCLUDED
+#ifndef EXCLUDED
   // === HighPrecisionNumbers === //
+  double a, b;
   // --- Addition & Subtraction --- //
   printf("HPN - Addition & Subtraction - 8 Tests \n");
   a = 1.3255037518;
@@ -33,12 +33,12 @@ int main(){
   printf("T2-mltR : %d\n",test_hpn_mult(b,a));
   printf("T3-mltN : %d\n",test_hpn_mult(a*(-1),b));
   printf("T4-mltNN: %d\n",test_hpn_mult(a*(-1),b*(-1)));
-  #endif
+#endif
   // === Next Iteration === //
   printf("Next Iteration \n");
-  double cr =  1.3255037518;
-  double ci =  1.2550952765;
-  double zr = -0.8182940918;
-  double zi =  0.6892104001;
+  double cr =  0;//-0.155037518;
+  double ci =  0;//.125509526;
+  double zr =  1.2255037518;
+  double zi =  -1.3550952765;
   printf("T1: %d\n",test_next_iteration(zr,zi,cr,ci));
 }
