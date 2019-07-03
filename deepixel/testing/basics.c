@@ -9,6 +9,14 @@
 
 #define EXCLUDED
 
+void stdio(){
+  char str[80];
+  while (fgets(str,80,stdin) != NULL){
+    test_if_stdio(str);
+  }
+  printf("%s\n",str);
+}
+
 int main(){
 #ifndef EXCLUDED
   // === HighPrecisionNumbers === //
@@ -33,7 +41,6 @@ int main(){
   printf("T2-mltR : %d\n",test_hpn_mult(b,a));
   printf("T3-mltN : %d\n",test_hpn_mult(a*(-1),b));
   printf("T4-mltNN: %d\n",test_hpn_mult(a*(-1),b*(-1)));
-#endif
   // === Next Iteration === //
   printf("Next Iteration \n");
   double cr =  0;//-0.155037518;
@@ -41,4 +48,7 @@ int main(){
   double zr =  1.2255037518;
   double zi =  -1.3550952765;
   printf("T1: %d\n",test_next_iteration(zr,zi,cr,ci));
+#endif
+  stdio();
+  return 0;
 }

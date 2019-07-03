@@ -27,6 +27,8 @@
 #define INT_FULL 4294967295u // 2^32-1 -- 32 bits of 1 = 0x FFFF FFFF
 #define INT_SIZE  4294967296u // 2^32   -- number of values of 32 bits = 0x 1 0000 0000
 
+#define CONST_2SQRT2 2.82843
+
 // ----- TYPES <LOCAL> ----- //
 
 // High Precision Number - HPN
@@ -42,6 +44,7 @@ typedef INT2S HPNSignedCarry [NUM_SIZE+CALC_SIZE]; // High Precision Number Sign
 typedef struct ComplexNumSt { // Complex Number, consisting of 2 High Precision Numbers
   HighPrecNum real;
   HighPrecNum imag;
+  bool esc;
 } ComplexNum;
 
 // ----- LOCAL FUNCTIONS ----- //
@@ -92,7 +95,7 @@ HighPrecNum hpn_from_double(double number){
 }
 
 ComplexNum cplx_from_double(double r, double i){
-  ComplexNum c = {hpn_from_double(r), hpn_from_double(i)};
+  ComplexNum c = {hpn_from_double(r), hpn_from_double(i), false};
   return c;
 }
 
@@ -370,7 +373,7 @@ ComplexNum next_iteration(ComplexNum Z, ComplexNum C){
       Zn.imag.neg = false;
     }
   }
-  for (int i = NUM_SIZE-1; i >= 0; i--){ // error below
+  for (int i = NUM_SIZE-1; i >= 0; i--){
     if (Zn.real.neg && carryR[i] > 0){      // no need to check for != 0, [0] is always < 0
       carryR[i] = -1*carryR[i];
       carryR[i-1] += 1;
@@ -384,6 +387,17 @@ ComplexNum next_iteration(ComplexNum Z, ComplexNum C){
     }
     Zn.imag.digits[i] = labs(carryI[i]);
   }
+  // check escaped: abs(z) >= 2
+  if (Zn.real.digits[0]+Zn.imag.digits[0]+(((INT2)Zn.real.digits[1]+Zn.imag.digits[1]) >> INT_BITS) >= CONST_2SQRT2){
+    Zn.esc = true; // with 'Mittelungleichung'
+  }
+  else if (Zn.real.digits[0] < 1 && Zn.imag.digits[0] < 1){
+    Zn.esc = false;
+  }
+  else{ // harsh approximation
+    Zn.esc = (Zn.real.digits[0]*Zn.imag.digits[0] + (((INT2)Zn.real.digits[0]*Zn.imag.digits[1] +
+            Zn.real.digits[1]*Zn.imag.digits[0]) >> INT_BITS) > 2);
+  }
   return Zn;
 }
 
@@ -392,7 +406,9 @@ ComplexNum next_iteration_split(ComplexNum Z, ComplexNum C){
   HighPrecNum Zi2 = hpn_mult(Z.imag,Z.imag);
   Zi2.neg = true;
   ComplexNum Zn = {hpn_add(hpn_add(Zr2,Zi2),C.real),
-                   hpn_add(hpn_mult(hpn_mult(Z.real,Z.imag),hpn_from_double(2)),C.imag)};
+                   hpn_add(hpn_mult(hpn_mult(Z.real,Z.imag),hpn_from_double(2)),C.imag),
+                   false};
+  Zn.esc = (hpn_add(hpn_mult(Z.real,Z.real),hpn_mult(Z.imag,Z.imag)).digits[0] >= 4);
   return Zn;
 }
 
@@ -414,4 +430,25 @@ int test_next_iteration(double Zr, double Zi, double Cr, double Ci){
   printf("ref : %f %f\n", Zr*Zr-Zi*Zi+Cr, 2*Zr*Zi+Ci);
   test_end();
   return 0;
+}
+
+// === CALCULATION - ADVANCED === //
+
+int escapetime(ComplexNum C, ComplexNum D, int maxI, ComplexNum fun (ComplexNum, ComplexNum)){
+  ComplexNum Z = D;
+  for (int iter=0; iter<maxI; iter++){
+    Z = fun(Z,C);
+    if (Z.esc){
+      return iter;
+    }
+  }
+  return maxI;
+}
+
+void test_if_stdio(const char* s){
+  // TEST - standard IO Interface - escapetime
+  double Cr, Ci;
+  int I;
+  sscanf(s, "%lf %lf %d", &Cr, &Ci, &I);
+  printf("%lf %lf %d: %d\n",Cr,Ci,I, escapetime(cplx_from_double(Cr,Ci),cplx_from_double(0,0),I,next_iteration));
 }
