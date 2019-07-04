@@ -1,56 +1,29 @@
-/* deepixel.c
- * deePixel lib - source file
- * by Robert Babin
+/* deepixel.cpp
+ * deepixel - source file
+ * by Robert Babin (Oswell Whent <xbrot.rykath@xoxy.net>)
  *
- * calculate the mandelbrot series escape for one pair of coordinates
+ * Deepixel - Fixed Point High Precision Number
+ *  - with overlying Complex Numbers
+ *  - with optimized functions to calculate escaptimes and escapepaths
  */
 
-#include <stdio.h> // printf
-#include <stdbool.h> // boolean variables
-#include <stdlib.h> // calloc
-#include <stdint.h> // int types
-#include <math.h> // ceil
+#include "deepixel.hpp"
 
-// ----- CONFIGURATION ----- //
+#include <cstdio> // printf
+#include <cstdbool> // boolean variables
+#include <cstdlib> // calloc
+#include <cstdint> // int types
+#include <cmath> // ceil
+#include <cstring> // memset
 
-#define NUM_SIZE 4    // length of the High Precision Number in subunits
-#define CALC_SIZE 2   // number of additional subunits during calculation
+// ----- Constants ----- //
 
-// testing subunits
-#define EXCLUDED
+#define CONST_2SQRT2 2.82843 // 2*sqrt(2) rounded up
 
-// ----- DEFINITIONS ----- //
-#define INT uint32_t  // unsigned base type
-#define INT2 uint64_t // unsigned buffer to store INT, twice as big as INT
-#define INT2S int64_t // signed buffer, same size as INT2
-#define INT_BITS 32u // number of bits of INT
-#define INT_FULL 4294967295u // 2^32-1 -- 32 bits of 1 = 0x FFFF FFFF
-#define INT_SIZE  4294967296u // 2^32   -- number of values of 32 bits = 0x 1 0000 0000
+// ===== FPHPN ===== //
 
-#define CONST_2SQRT2 2.82843
-
-// ----- TYPES <LOCAL> ----- //
-
-// High Precision Number - HPN
-typedef struct HighPrecNumSt {
-  bool neg;
-  INT digits[NUM_SIZE];
-} HighPrecNum; // High Precision Number
-
-typedef INT2 HPNCarry [NUM_SIZE+CALC_SIZE]; // High Precision Number (unsigned) Carry
-
-typedef INT2S HPNSignedCarry [NUM_SIZE+CALC_SIZE]; // High Precision Number Signed Carry
-
-typedef struct ComplexNumSt { // Complex Number, consisting of 2 High Precision Numbers
-  HighPrecNum real;
-  HighPrecNum imag;
-  bool esc;
-} ComplexNum;
-
-// ----- LOCAL FUNCTIONS ----- //
-
-char hpn_larger(HighPrecNum** s, HighPrecNum** l, HighPrecNum num1, char c1, HighPrecNum num2, char c2){
-  // determine larger High Precision Number
+char fphpn_larger(FPHPN** s, FPHPN** l, FPHPN num1, char c1, FPHPN num2, char c2){
+  // determine larger FPHPN
   // based on absolute values (.digits), ignoring sign (.neg)
   for (int i = 0; i < NUM_SIZE; i++){
     if (num1.digits[i] > num2.digits[i]){
@@ -70,136 +43,76 @@ char hpn_larger(HighPrecNum** s, HighPrecNum** l, HighPrecNum num1, char c1, Hig
   return '=';
 }
 
-HighPrecNum hpn_from_double(double number){
-  HighPrecNum hpn;
+// --- Constructors --- //
+
+FPHPN::FPHPN(){
+  neg = false;
+  std::memset(digits, 0, sizeof(digits));
+}
+
+FPHPN::FPHPN(double number){
   if (number == 0){
-    hpn.neg = false;
-    for (int i = 0; i < NUM_SIZE; i++){
-      hpn.digits[i] = 0;
-    }
-    return hpn;
+    neg = false;
+    std::memset(digits, 0, sizeof(digits));
+    return;
   }
   else if (number > 0){
-    hpn.neg = false;
+    neg = false;
   }
   else {
-    hpn.neg = true;
+    neg = true;
     number *= -1;
   }
   for (int i = 0; i < NUM_SIZE; i++){
-    hpn.digits[i] = (INT) number;
-    number -= hpn.digits[i];
+    digits[i] = (INT) number;
+    number -= digits[i];
     number *= INT_SIZE;
   }
-  return hpn;
 }
 
-ComplexNum cplx_from_double(double r, double i){
-  ComplexNum c = {hpn_from_double(r), hpn_from_double(i), false};
-  return c;
-}
+// --- Calculation & Operators --- //
 
-double hpn_to_double(HighPrecNum hpn){
-  double d = 0;
-  double a;
-  for (int i = 0; i < NUM_SIZE; i++){
-    a = hpn.digits[i];
-    for (int ii = 0; ii < i; ii++){
-      a /= INT_SIZE;
-    }
-    d += a;
-  }
-  if (hpn.neg){
-    d *= -1;
-  }
-  return d;
-}
-
-void test_header(char* name, char* desc){
-  printf("= TEST %s =\n",name);
-  printf("%s\n",desc);
-}
-
-void test_hpn(const char* name, HighPrecNum hpn, double d){
-  if (isnan(d)){
-    d = hpn_to_double(hpn);
-  }
-  printf("%s: %d %2X.%8X.%8X = %+11.8f\n",name,hpn.neg,hpn.digits[0],hpn.digits[1],hpn.digits[2],d);
-}
-
-void test_end(){
-  printf("=== TEST END ===\n");
-}
-
-#ifndef EXCLUDED
-// ----- VISIBLE FUNCTIONS ----- //
-
-int check_sizes(){
-  // not neccessary anymore?
-  if (sizeof(int) != 4 || sizeof(long) != 8){
-    fprintf(stderr, "wrong integer sizes\nint: %ld/4\nlong: %ld/8\n",sizeof(int),sizeof(long));
-    return(-1);
-  }
-  return(0);
-}
-#endif
-
-// ----- CALCULATION & BASE FUNCTIONS ----- //
-
-HighPrecNum hpn_add(HighPrecNum hpnA, HighPrecNum hpnB){
-  HighPrecNum hpnC;
+FPHPN FPHPN::operator+(const FPHPN& other){
+  FPHPN res;
   // C = A + B
-	if (hpnA.neg == hpnB.neg){
+	if (neg == other.neg){
 		// --- Addition --- //
-		hpnC.neg = hpnA.neg;
+		res.neg = neg;
     INT2 buffer = 0;
     for (int i=NUM_SIZE-1; i>=0; i--){
-      buffer += hpnA.digits[i] + hpnB.digits[i];
-      hpnC.digits[i] = buffer;
+      buffer += digits[i] + other.digits[i];
+      res.digits[i] = buffer;
       buffer = buffer >> INT_BITS;
     }
 	}
 	else{
 	  // --- Subtraction --- //
-    HighPrecNum* hpnLptr;
-    HighPrecNum* hpnSptr;
-    char larger = hpn_larger(&hpnSptr, &hpnLptr, hpnA, 'A', hpnB, 'B');
+    FPHPN* hpnLptr;
+    FPHPN* hpnSptr;
+    char larger = fphpn_larger(&hpnSptr, &hpnLptr, *this, 'A', other, 'B');
     if (larger == '='){
-      hpnC.neg = false;
+      res.neg = false;
       for (int i=0; i<NUM_SIZE; i++){
-        hpnC.digits[i] = 0;
+        res.digits[i] = 0;
       }
-      return hpnC;
+      return res;
     }
-    hpnC.neg = hpnLptr->neg;
+    res.neg = hpnLptr->neg;
     INT2 buffer;
     INT2 carry = 0;
     for (int i=NUM_SIZE-1; i>=0; i--){
       buffer = carry + hpnSptr->digits[i];
       carry = (hpnLptr->digits[i] < buffer);
-      hpnC.digits[i] = hpnLptr->digits[i] - buffer;
+      res.digits[i] = hpnLptr->digits[i] - buffer;
     }
   }
-	return hpnC;
+	return res;
 }
 
-// --- TEST --- //
-int test_hpn_add(double dA, double dB){
-  test_header("hpn_add", "C = A + B");
-  HighPrecNum hpnA = hpn_from_double(dA);
-  HighPrecNum hpnB = hpn_from_double(dB);
-  test_hpn("hpnA",hpnA,dA);
-  test_hpn("hpnB",hpnB,dB);
-  test_hpn("hpnC",hpn_add(hpnA,hpnB),NAN);
-  printf("ref : %f\n",dA+dB);
-  test_end();
-  return 0;
-}
-
-HighPrecNum hpn_mult(HighPrecNum hpnA, HighPrecNum hpnB){
-  HighPrecNum hpnC;
+FPHPN FPHPN::mult(const FPHPN& other){
+  FPHPN res;
   // C = A * B
-  hpnC.neg = hpnA.neg != hpnB.neg;
+  res.neg = neg != other.neg;
   INT2 buffer;
   INT2 carry0 = 0; // carry0 aligned with buffer
   INT2 carry1 = 0; // left shift INT_BITS from carry0
@@ -208,26 +121,26 @@ HighPrecNum hpn_mult(HighPrecNum hpnA, HighPrecNum hpnB){
       if (sum-i >= NUM_SIZE || i >= NUM_SIZE){
         continue;
       }
-      buffer = hpnA.digits[i];
-      buffer *= hpnB.digits[sum-i];
+      buffer = digits[i];
+      buffer *= other.digits[sum-i];
       carry0 += buffer & INT_FULL;   // bitwise AND -- lower INT
       carry1 += buffer >> INT_BITS;  // higher INT
     }
     if (sum < NUM_SIZE){
-      hpnC.digits[sum] = carry0 & INT_FULL;
+      res.digits[sum] = carry0 & INT_FULL;
     }
     carry1 += carry0 >> INT_BITS;
     carry0 = carry1;
     carry1 = carry0 >> INT_BITS;
     carry0 = carry0 & INT_FULL;
   }
-  return hpnC;
+  return res;
 }
 
-HighPrecNum hpn_mult_lc(HighPrecNum hpnA, HighPrecNum hpnB){
-  HighPrecNum hpnC;
+FPHPN FPHPN::mult_lc(const FPHPN& other){
+  FPHPN res;
   // C = A * B
-  hpnC.neg = hpnA.neg != hpnB.neg;
+  res.neg = neg != other.neg;
   INT2 buffer;
   HPNCarry carry = {0};
   for (int sum=NUM_SIZE+CALC_SIZE-1; sum >= 0; sum--){
@@ -235,8 +148,8 @@ HighPrecNum hpn_mult_lc(HighPrecNum hpnA, HighPrecNum hpnB){
       if (sum-i >= NUM_SIZE || i >= NUM_SIZE){
         continue;
       }
-      buffer = hpnA.digits[i];
-      buffer *= hpnB.digits[sum-i];
+      buffer = digits[i];
+      buffer *= other.digits[sum-i];
       if (sum != 0){
         carry[sum] += buffer & INT_FULL;   // bitwise AND -- lower INT
         carry[sum-1] += buffer >> INT_BITS;  // higher INT
@@ -246,36 +159,85 @@ HighPrecNum hpn_mult_lc(HighPrecNum hpnA, HighPrecNum hpnB){
       }
     }
     if (sum < NUM_SIZE){
-      hpnC.digits[sum] = carry[sum] & INT_FULL;
+      res.digits[sum] = carry[sum] & INT_FULL;
     }
     if (sum != 0){
       carry[sum-1] += carry[sum] >> INT_BITS;
       carry[sum] = carry[sum] & INT_FULL;
     }
   }
-  return hpnC;
+  return res;
 }
 
-// --- TEST --- //
-int test_hpn_mult(double dA, double dB){
-  test_header("hpn_mult & *_lc"," C = A * B");
-  HighPrecNum hpnA = hpn_from_double(dA);
-  HighPrecNum hpnB = hpn_from_double(dB);
-  test_hpn("hpnA ",hpnA,dA);
-  test_hpn("hpnB ",hpnB,dB);
-  test_hpn("hpnC1",hpn_mult(hpnA,hpnB),NAN);
-  test_hpn("hpnC2",hpn_mult_lc(hpnA,hpnB),NAN);
-  printf("ref  : %f\n",dA*dB);
-  test_end();
-  return 0;
+// --- Return Functions --- //
+
+double FPHPN::ret_double(){
+  double d = 0;
+  double a;
+  for (int i = 0; i < NUM_SIZE; i++){
+    a = digits[i];
+    for (int ii = 0; ii < i; ii++){
+      a /= INT_SIZE;
+    }
+    d += a;
+  }
+  if (neg){
+    d *= -1;
+  }
+  return d;
 }
 
-ComplexNum next_iteration(ComplexNum Z, ComplexNum C){
+char* FPHPN::ret_hex(){
+  // Return first 3 digits in hexadecimal text representation
+  // Assuming INT_SIZE=32u, NUM_SIZE >= 3
+  char* s = (char*) malloc(sizeof(char)*21);
+  std::sprintf(s,"+%2X.%08X.%08X",digits[0],digits[1],digits[2]);
+  if (neg){
+    s[0] = '-';
+  }
+  return s;
+}
+
+char* FPHPN::ret_hex_all(){
+  // Return all digits in hexadecimal text representation
+  // Assuming INT_SIZE=32u
+  // Related: ret_hex()
+  char* s = (char*) malloc(sizeof(char)*(3+(NUM_SIZE-1)*9));
+  std::sprintf(s, "+%2X",digits[0]);
+  if (neg){
+    s[0] = '-';
+  }
+  for (int i = 1; i < NUM_SIZE; i++){
+    std::printf(s, "%s.%08X",s,digits[i]);
+  }
+  return s;
+}
+
+// ===== CFPHPN ===== //
+
+// --- Constructors --- //
+
+CFPHPN::CFPHPN(){
+  real = FPHPN();
+  imag = FPHPN();
+  esc = false;
+}
+
+CFPHPN::CFPHPN(double r, double i){
+  real = FPHPN(r);
+  imag = FPHPN(i);
+  esc = (r*r + i*i > 4);
+}
+
+// --- Calculation --- //
+
+CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
   INT2 bufferR, bufferI, bufferRI;
   HPNSignedCarry carryR = {0};
   HPNSignedCarry carryI = {0};
   bool x2;
-  ComplexNum Zn;
+  CFPHPN Zn;
+  CFPHPN Z = *this;
 
   bool negRI = Z.real.neg ^ Z.imag.neg;
 
@@ -401,43 +363,27 @@ ComplexNum next_iteration(ComplexNum Z, ComplexNum C){
   return Zn;
 }
 
-ComplexNum next_iteration_split(ComplexNum Z, ComplexNum C){
-  HighPrecNum Zr2 = hpn_mult(Z.real,Z.real);
-  HighPrecNum Zi2 = hpn_mult(Z.imag,Z.imag);
+CFPHPN CFPHPN::next_iter_ref(CFPHPN C){
+  CFPHPN Z = *this;
+  HighPrecNum Zr2 = Z.real * Z.real;
+  HighPrecNum Zi2 = Z.imag * Z.imag;
   Zi2.neg = true;
-  ComplexNum Zn = {hpn_add(hpn_add(Zr2,Zi2),C.real),
-                   hpn_add(hpn_mult(hpn_mult(Z.real,Z.imag),hpn_from_double(2)),C.imag),
-                   false};
-  Zn.esc = (hpn_add(hpn_mult(Z.real,Z.real),hpn_mult(Z.imag,Z.imag)).digits[0] >= 4);
+  CFPHPN Zn;
+  Zn.real = (Zr2+Zi2)+C.real;
+  Zn.imag = (Z.real*Z.imag*FPHPN(2))+C.imag;
+  Zn.esc = ((Zn.real*Zn.real + Zn.imag*Zn.imag).digits[0] >= 4);
   return Zn;
 }
 
-// --- TEST --- //
-int test_next_iteration(double Zr, double Zi, double Cr, double Ci){
-  test_header("next_iteration"," Zn = Z^2 + C");
-  ComplexNum Z = cplx_from_double(Zr,Zi);
-  ComplexNum C = cplx_from_double(Cr,Ci);
-  test_hpn("Z_r ",Z.real,Zr);
-  test_hpn("Z_i ",Z.imag,Zi);
-  test_hpn("C_r ",C.real,Cr);
-  test_hpn("C_i ",C.imag,Ci);
-  ComplexNum Zn = next_iteration(Z,C);
-  test_hpn("Zn_r",Zn.real,NAN);
-  test_hpn("Zn_i",Zn.imag,NAN);
-  ComplexNum Zs = next_iteration_split(Z,C);
-  test_hpn("Zs_r",Zs.real,NAN);
-  test_hpn("Zs_i",Zs.imag,NAN);
-  printf("ref : %f %f\n", Zr*Zr-Zi*Zi+Cr, 2*Zr*Zi+Ci);
-  test_end();
-  return 0;
-}
+// --- Return Functions --- //
 
-// === CALCULATION - ADVANCED === //
 
-int escapetime(ComplexNum C, ComplexNum D, int maxI, ComplexNum fun (ComplexNum, ComplexNum)){
-  ComplexNum Z = D;
+// === FUNCTIONS === //
+
+int escapetime(CFPHPN C, CFPHPN D, int maxI){
+  CFPHPN Z = D;
   for (int iter=0; iter<maxI; iter++){
-    Z = fun(Z,C);
+    Z = Z.next_iteration(C);
     if (Z.esc){
       return iter;
     }
@@ -445,10 +391,3 @@ int escapetime(ComplexNum C, ComplexNum D, int maxI, ComplexNum fun (ComplexNum,
   return maxI;
 }
 
-void test_if_stdio(const char* s){
-  // TEST - standard IO Interface - escapetime
-  double Cr, Ci;
-  int I;
-  sscanf(s, "%lf %lf %d", &Cr, &Ci, &I);
-  printf("%lf %lf %d: %d\n",Cr,Ci,I, escapetime(cplx_from_double(Cr,Ci),cplx_from_double(0,0),I,next_iteration));
-}
