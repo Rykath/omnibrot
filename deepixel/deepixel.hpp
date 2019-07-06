@@ -30,8 +30,8 @@ typedef INT2 HPNCarry [NUM_SIZE+CALC_SIZE]; // High Precision Number (unsigned) 
 typedef INT2S HPNSignedCarry [NUM_SIZE+CALC_SIZE]; // High Precision Number Signed Carry
 
 // --- Names --- //
-#define FPHPN HighPrecNum // Fixed Point High Precision Number
-#define CFPHPN ComplexNum // Complex Fixed Point High Precision Number
+#define FPHPN FPHPN // Fixed Point High Precision Number
+#define CFPHPN CFPHPN // Complex Fixed Point High Precision Number
 
 // === Classes === //
 
@@ -47,6 +47,7 @@ public:
   FPHPN mult_lc (const FPHPN&); // alternate implementation of multiplication using a large carry
 
   FPHPN operator+ (const FPHPN&);
+  FPHPN operator- (const FPHPN&);
   FPHPN operator* (const FPHPN& other){ return mult_lc(other);};
 
   double ret_double();
@@ -62,6 +63,7 @@ public:
 
   CFPHPN();
   CFPHPN(double, double);
+  CFPHPN(FPHPN, FPHPN);
 
   CFPHPN next_iter_opt(CFPHPN); // optimized, low-level implementation
   CFPHPN next_iter_ref(CFPHPN); // reference, implementation using FPHPN operators

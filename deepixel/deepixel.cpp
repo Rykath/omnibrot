@@ -80,7 +80,8 @@ FPHPN FPHPN::operator+(const FPHPN& other){
 		res.neg = neg;
     INT2 buffer = 0;
     for (int i=NUM_SIZE-1; i>=0; i--){
-      buffer += digits[i] + other.digits[i];
+      buffer += digits[i];
+      buffer += other.digits[i];
       res.digits[i] = buffer;
       buffer = buffer >> INT_BITS;
     }
@@ -107,6 +108,13 @@ FPHPN FPHPN::operator+(const FPHPN& other){
     }
   }
 	return res;
+}
+
+FPHPN FPHPN::operator-(const FPHPN& other){
+  // depending on: operator+
+  FPHPN sub = other;
+  sub.neg = not sub.neg;
+  return (*this + sub);
 }
 
 FPHPN FPHPN::mult(const FPHPN& other){
@@ -208,7 +216,7 @@ char* FPHPN::ret_hex_all(){
     s[0] = '-';
   }
   for (int i = 1; i < NUM_SIZE; i++){
-    std::printf(s, "%s.%08X",s,digits[i]);
+    std::sprintf(s, "%s.%08X",s,digits[i]);
   }
   return s;
 }
@@ -227,6 +235,12 @@ CFPHPN::CFPHPN(double r, double i){
   real = FPHPN(r);
   imag = FPHPN(i);
   esc = (r*r + i*i > 4);
+}
+
+CFPHPN::CFPHPN(FPHPN r, FPHPN i){
+  real = r;
+  imag = i;
+  esc = (r*r + i*i).digits[0] >= 4;
 }
 
 // --- Calculation --- //
@@ -251,8 +265,8 @@ CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
         bufferI *= Z.imag.digits[sum-i];
         x2 = (2*i != sum);                                      //      binomial formula, x2 for all non-squares
         if (sum == 0){
-          carryR[sum] += bufferR * x2;
-          carryR[sum] -= bufferI * x2;
+          carryR[sum] += bufferR << x2;
+          carryR[sum] -= bufferI << x2;
         }
         else {
           carryR[sum] += (bufferR & INT_FULL) << x2;
@@ -350,6 +364,8 @@ CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
     Zn.imag.digits[i] = labs(carryI[i]);
   }
   // check escaped: abs(z) >= 2
+  //Zn.esc = Zn.real.ret_double()*Zn.real.ret_double() + Zn.imag.ret_double()*Zn.imag.ret_double() > 4;
+
   if (Zn.real.digits[0]+Zn.imag.digits[0]+(((INT2)Zn.real.digits[1]+Zn.imag.digits[1]) >> INT_BITS) >= CONST_2SQRT2){
     Zn.esc = true; // with 'Mittelungleichung'
   }
@@ -365,11 +381,10 @@ CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
 
 CFPHPN CFPHPN::next_iter_ref(CFPHPN C){
   CFPHPN Z = *this;
-  HighPrecNum Zr2 = Z.real * Z.real;
-  HighPrecNum Zi2 = Z.imag * Z.imag;
-  Zi2.neg = true;
+  FPHPN Zr2 = Z.real * Z.real;
+  FPHPN Zi2 = Z.imag * Z.imag;
   CFPHPN Zn;
-  Zn.real = (Zr2+Zi2)+C.real;
+  Zn.real = (Zr2-Zi2)+C.real;
   Zn.imag = (Z.real*Z.imag*FPHPN(2))+C.imag;
   Zn.esc = ((Zn.real*Zn.real + Zn.imag*Zn.imag).digits[0] >= 4);
   return Zn;
