@@ -10,8 +10,8 @@ import pybrot
 import subprocess
 import math
 
-path_deepixel = '.cmake.lnk/deepixel-mandelbrot'
-path_output = '.test/deepixel_4+2_1024sq_1024i_-1.48_0_0.02sq_190706.png'
+path_deepixel = './build/deepixel-mandelbrot'
+path_output = './results/deepixel_4+2_'
 
 """ = DESCRIPTION =
  * c++ program takes input as arguments (cr, ci, maxIter)
@@ -23,9 +23,12 @@ width = 1024
 height = width
 maxColor = 255
 maxIteration = 1024
-center = -1.48+0j
-size = 0.02+0.02j
+center = -1.484935+0j
+size = 0.000005+0.000005j
 spacing = size.real/width + 1j*size.imag/height
+datestr = '190709'
+
+path_output += '{}sq_{}i_{}_{}_{}sq_{}'.format(width, maxIteration, center.real, center.imag, size.real, datestr)
 
 
 def color_linear(raw):

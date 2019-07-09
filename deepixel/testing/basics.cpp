@@ -6,11 +6,11 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "Xtremebrot/deepixel/deepixel.hpp"
+#include "deepixel.hpp"
 
 using namespace std;
 
-int escapetime_single_2stdo(int argc, char** argv){
+void escapetime_single_2stdo(int argc, char** argv){
   double cr, ci;
   int i;
   if (argc != 4){

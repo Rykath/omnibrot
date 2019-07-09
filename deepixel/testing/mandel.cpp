@@ -7,7 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 
-#include "Xtremebrot/deepixel/deepixel.hpp"
+#include "deepixel.hpp"
 
 using namespace std;
 
