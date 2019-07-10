@@ -69,6 +69,11 @@ public:
   CFPHPN next_iter_ref(CFPHPN); // reference, implementation using FPHPN operators
 
   CFPHPN next_iteration(CFPHPN C){ return next_iter_opt(C);};
+
+  void calc_esc_double(); // calc `esc`: |Z| > 2 - via conversion to double
+  void calc_esc_opt();    // calc `esc`: |Z| > 2 - via approximations and FPHPN operators
+
+  void calc_esc(){ calc_esc_opt();};
 };
 
 // === Functions === //

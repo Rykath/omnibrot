@@ -255,15 +255,15 @@ CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
 
   bool negRI = Z.real.neg ^ Z.imag.neg;
 
-  for (int sum = NUM_SIZE+CALC_SIZE-1; sum >= 0; sum--){        //  loop carry
-    for (int i = 0; i <= sum; i++){                             //    loop multiplication
-      if (sum-i >= NUM_SIZE || i >= NUM_SIZE){ continue; }      //      catch borders
-      if (i <= sum/2){                                          //      reduced loop for squaring Zr and Zi - calculate Zr
+  for (int sum = NUM_SIZE+CALC_SIZE-1; sum >= 0; sum--){        // loop carry
+    for (int i = 0; i <= sum; i++){                             // loop multiplication
+      if (sum-i >= NUM_SIZE || i >= NUM_SIZE){ continue; }      // catch borders
+      if (i <= sum/2){                                          // reduced loop for squaring Zr and Zi - calculate Zr
         bufferR = Z.real.digits[i];
         bufferR *= Z.real.digits[sum-i];
         bufferI = Z.imag.digits[i];
         bufferI *= Z.imag.digits[sum-i];
-        x2 = (2*i != sum);                                      //      binomial formula, x2 for all non-squares
+        x2 = (2*i != sum);                                      // binomial formula, x2 for all non-squares
         if (sum == 0){
           carryR[sum] += bufferR << x2;
           carryR[sum] -= bufferI << x2;
@@ -275,7 +275,7 @@ CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
           carryR[sum-1] -= (bufferI >> INT_BITS) << x2;
         }
       }
-      bufferRI = Z.real.digits[i];                              //      multiplying Zr and Zi - calculate Zi
+      bufferRI = Z.real.digits[i];                              // multiplying Zr and Zi - calculate Zi
       bufferRI *= Z.imag.digits[sum-i];
       if (sum == 0){
         if (negRI){ carryI[sum] -= bufferRI << 1u;}
@@ -292,7 +292,7 @@ CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
         }
       }
     }
-    if (sum < NUM_SIZE){                                        //    Adding C
+    if (sum < NUM_SIZE){                                        // Adding C
       if (C.real.neg){
         carryR[sum] -= C.real.digits[sum];
       }
@@ -363,19 +363,6 @@ CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
     }
     Zn.imag.digits[i] = labs(carryI[i]);
   }
-  // check escaped: abs(z) >= 2
-  //Zn.esc = Zn.real.ret_double()*Zn.real.ret_double() + Zn.imag.ret_double()*Zn.imag.ret_double() > 4;
-
-  if (Zn.real.digits[0]+Zn.imag.digits[0]+(((INT2)Zn.real.digits[1]+Zn.imag.digits[1]) >> INT_BITS) >= CONST_2SQRT2){
-    Zn.esc = true; // with 'Mittelungleichung'
-  }
-  else if (Zn.real.digits[0] < 1 && Zn.imag.digits[0] < 1){
-    Zn.esc = false;
-  }
-  else{ // harsh approximation
-    Zn.esc = (Zn.real.digits[0]*Zn.imag.digits[0] + (((INT2)Zn.real.digits[0]*Zn.imag.digits[1] +
-            Zn.real.digits[1]*Zn.imag.digits[0]) >> INT_BITS) > 2);
-  }
   return Zn;
 }
 
@@ -386,8 +373,30 @@ CFPHPN CFPHPN::next_iter_ref(CFPHPN C){
   CFPHPN Zn;
   Zn.real = (Zr2-Zi2)+C.real;
   Zn.imag = (Z.real*Z.imag*FPHPN(2))+C.imag;
-  Zn.esc = ((Zn.real*Zn.real + Zn.imag*Zn.imag).digits[0] >= 4);
   return Zn;
+}
+
+void CFPHPN::calc_esc_double(){
+  double r = this->real.ret_double();
+  double i = this->imag.ret_double();
+  this->esc = r*r + i*i >= 4;
+}
+
+void CFPHPN::calc_esc_opt(){
+  if (this->real.digits[0] + this->imag.digits[0] + (((INT2)this->real.digits[1]+this->imag.digits[1]) >> INT_BITS)
+  >= CONST_2SQRT2){
+    this->esc = true; // with 'Mittelungleichung'
+  }
+  else if (this->real.digits[0] < 1 && this->imag.digits[0] < 1){
+    this->esc = false;
+  }
+  else if (this->real.digits[0] * this->imag.digits[0] +
+  (((INT2) this->real.digits[0] * this->imag.digits[1] + this->real.digits[1] * this->imag.digits[0]) >> INT_BITS) > 4){
+    this->esc = true;
+  }
+  else{
+    this-> esc = (this->real * this->real + this->imag * this->imag).digits[0] >= 4;
+  }
 }
 
 // --- Return Functions --- //
@@ -397,8 +406,13 @@ CFPHPN CFPHPN::next_iter_ref(CFPHPN C){
 
 int escapetime(CFPHPN C, CFPHPN D, int maxI){
   CFPHPN Z = D;
+  Z.calc_esc();
+  if (Z.esc){
+    return 0;
+  }
   for (int iter=0; iter<maxI; iter++){
     Z = Z.next_iteration(C);
+    Z.calc_esc();
     if (Z.esc){
       return iter;
     }
