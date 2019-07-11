@@ -36,9 +36,9 @@ int main(int argc, char** argv){
 
   CFPHPN D; //Z_0 = 0
   CFPHPN spacing (range_cr/width, range_ci/height);
-  CFPHPN C0 (center_cr-range_cr/2, center_ci-range_ci/2);
+  CFPHPN C0 (center_cr-range_cr/2, center_ci+range_ci/2);
   C0.real = C0.real + spacing.real * FPHPN(0.5);
-  C0.imag = C0.imag + spacing.imag * FPHPN(0.5);
+  C0.imag = C0.imag - spacing.imag * FPHPN(0.5);
 
   CFPHPN C = C0;
 
@@ -50,6 +50,6 @@ int main(int argc, char** argv){
       C.real = C.real + spacing.real;
     }
     printf("\n");
-    C.imag = C.imag + spacing.imag;
+    C.imag = C.imag - spacing.imag;
   }
 }

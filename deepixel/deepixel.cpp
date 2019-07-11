@@ -411,11 +411,11 @@ int escapetime(CFPHPN C, CFPHPN D, int maxI){
     return 0;
   }
   for (int iter=0; iter<maxI; iter++){
-    Z = Z.next_iteration(C);
     Z.calc_esc();
     if (Z.esc){
       return iter;
     }
+    Z = Z.next_iteration(C);
   }
   return maxI;
 }
