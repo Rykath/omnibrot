@@ -59,7 +59,6 @@ class CFPHPN {
 public:
   FPHPN real;
   FPHPN imag;
-  bool esc;
 
   CFPHPN();
   CFPHPN(double, double);
@@ -68,12 +67,12 @@ public:
   CFPHPN next_iter_opt(CFPHPN); // optimized, low-level implementation
   CFPHPN next_iter_ref(CFPHPN); // reference, implementation using FPHPN operators
 
-  CFPHPN next_iteration(CFPHPN C){ return next_iter_opt(C);};
+  CFPHPN next_iteration(CFPHPN C){ return next_iter_ref(C);};
 
-  void calc_esc_double(); // calc `esc`: |Z| > 2 - via conversion to double
-  void calc_esc_opt();    // calc `esc`: |Z| > 2 - via approximations and FPHPN operators
+  bool calc_esc_double(); // calc `esc`: |Z| > 2 - via conversion to double
+  bool calc_esc_opt();    // calc `esc`: |Z| > 2 - via approximations and FPHPN operators
 
-  void calc_esc(){ calc_esc_opt();};
+  bool calc_esc(){ return calc_esc_opt();};
 };
 
 // === Functions === //

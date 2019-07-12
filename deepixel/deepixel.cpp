@@ -228,19 +228,16 @@ char* FPHPN::ret_hex_all(){
 CFPHPN::CFPHPN(){
   real = FPHPN();
   imag = FPHPN();
-  esc = false;
 }
 
 CFPHPN::CFPHPN(double r, double i){
   real = FPHPN(r);
   imag = FPHPN(i);
-  esc = (r*r + i*i > 4);
 }
 
 CFPHPN::CFPHPN(FPHPN r, FPHPN i){
   real = r;
   imag = i;
-  esc = (r*r + i*i).digits[0] >= 4;
 }
 
 // --- Calculation --- //
@@ -376,26 +373,26 @@ CFPHPN CFPHPN::next_iter_ref(CFPHPN C){
   return Zn;
 }
 
-void CFPHPN::calc_esc_double(){
+bool CFPHPN::calc_esc_double(){
   double r = this->real.ret_double();
   double i = this->imag.ret_double();
-  this->esc = r*r + i*i >= 4;
+  return r*r + i*i >= 4;
 }
 
-void CFPHPN::calc_esc_opt(){
+bool CFPHPN::calc_esc_opt(){
   if (this->real.digits[0] + this->imag.digits[0] + (((INT2)this->real.digits[1]+this->imag.digits[1]) >> INT_BITS)
   >= CONST_2SQRT2){
-    this->esc = true; // with 'Mittelungleichung'
+    return true; // with 'Mittelungleichung'
   }
   else if (this->real.digits[0] < 1 && this->imag.digits[0] < 1){
-    this->esc = false;
+    return false;
   }
   else if (this->real.digits[0] * this->imag.digits[0] +
   (((INT2) this->real.digits[0] * this->imag.digits[1] + this->real.digits[1] * this->imag.digits[0]) >> INT_BITS) > 4){
-    this->esc = true;
+    return true;
   }
   else{
-    this-> esc = (this->real * this->real + this->imag * this->imag).digits[0] >= 4;
+    return (this->real * this->real + this->imag * this->imag).digits[0] >= 4;
   }
 }
 
@@ -406,16 +403,14 @@ void CFPHPN::calc_esc_opt(){
 
 int escapetime(CFPHPN C, CFPHPN D, int maxI){
   CFPHPN Z = D;
-  Z.calc_esc();
-  if (Z.esc){
+  if (Z.calc_esc()){
     return 0;
   }
-  for (int iter=0; iter<maxI; iter++){
-    Z.calc_esc();
-    if (Z.esc){
+  for (int iter=1; iter<maxI; iter++){
+    Z = Z.next_iteration(C);
+    if (Z.calc_esc()){
       return iter;
     }
-    Z = Z.next_iteration(C);
   }
   return maxI;
 }
