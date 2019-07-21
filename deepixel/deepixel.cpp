@@ -211,12 +211,13 @@ char* FPHPN::ret_hex_all(){
   // Assuming INT_SIZE=32u
   // Related: ret_hex()
   char* s = (char*) malloc(sizeof(char)*(3+(NUM_SIZE-1)*9));
-  std::sprintf(s, "+%2X",digits[0]);
+  char* sp = s;
+  sp += std::sprintf(sp, "+%2X",digits[0]);
   if (neg){
     s[0] = '-';
   }
   for (int i = 1; i < NUM_SIZE; i++){
-    std::sprintf(s, "%s.%08X",s,digits[i]);
+    sp += std::sprintf(sp, ".%08X",digits[i]);
   }
   return s;
 }
@@ -307,7 +308,7 @@ CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
       if (carryR[sum] < 0) {
         carryR[sum - 1] -= (INT2) labs(carryR[sum]) >> INT_BITS;
         carryR[sum] = (INT2) labs(carryR[sum]) & INT_FULL;
-        if (carryR[sum] > 0) {
+        if (carryR[sum] != 0) {
           carryR[sum - 1] -= 1;
           carryR[sum] = INT_SIZE - carryR[sum];
         }
@@ -350,13 +351,13 @@ CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
     if (Zn.real.neg && carryR[i] > 0){      // no need to check for != 0, [0] is always < 0
       carryR[i] = -1*carryR[i];
       carryR[i-1] += 1;
-      carryR[i] += INT_FULL;
+      carryR[i] += INT_SIZE;
     }
     Zn.real.digits[i] = labs(carryR[i]);
     if (Zn.imag.neg && carryI[i] > 0){
       carryI[i] = -1*carryI[i];
       carryI[i-1] += 1;
-      carryI[i] += INT_FULL;
+      carryI[i] += INT_SIZE;
     }
     Zn.imag.digits[i] = labs(carryI[i]);
   }
