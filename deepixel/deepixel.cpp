@@ -70,6 +70,24 @@ FPHPN::FPHPN(double number){
   }
 }
 
+FPHPN::FPHPN(char * str) {
+  // Read all digits in hexadecimal text representation
+  // Assuming INT_SIZE=32u
+  // Related: ret_hex() and ret_hex_all()
+  // Format: "[+-]%2X.%08X.%08X..." (repeating)
+  std::memset(digits, 0, sizeof(digits));
+  char buf;
+  INT buffer;
+  std::sscanf(str,"%c%2X",&buf,&digits[0]);
+  neg = buf == '-';
+  str += 3;
+  int i  = 1;
+  while (i < NUM_SIZE and std::sscanf(str, ".%8X",&digits[i])){
+    str += 9;
+    i += 1;
+  }
+}
+
 // --- Calculation & Operators --- //
 
 FPHPN FPHPN::operator+(const FPHPN& other){

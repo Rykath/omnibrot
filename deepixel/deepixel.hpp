@@ -42,6 +42,7 @@ public:
 
   FPHPN();
   FPHPN(double);
+  FPHPN(char*); // reverse of ret_hex and ret_hex_all()
 
   FPHPN mult (const FPHPN&);
   FPHPN mult_lc (const FPHPN&); // alternate implementation of multiplication using a large carry
