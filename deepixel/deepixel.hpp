@@ -14,6 +14,8 @@
 // --- Includes --- //
 #include <cstdint>
 
+#include "../common/complex.hpp"
+
 // --- Configuration --- //
 #define NUM_SIZE 4    // length of the High Precision Number in subunits
 #define CALC_SIZE 2   // number of additional subunits during calculation
@@ -30,12 +32,11 @@ typedef INT2 HPNCarry [NUM_SIZE+CALC_SIZE]; // High Precision Number (unsigned) 
 typedef INT2S HPNSignedCarry [NUM_SIZE+CALC_SIZE]; // High Precision Number Signed Carry
 
 // --- Names --- //
-#define FPHPN FPHPN // Fixed Point High Precision Number
-#define CFPHPN CFPHPN // Complex Fixed Point High Precision Number
+#define CFPHPN ComplexNumber<FPHPN> // Complex FPHPN
 
-// === Classes === //
+// === New Base Type === //
 
-class FPHPN {
+class FPHPN { // Fixed Point High Precision Number
 public:
   bool neg;
   INT digits[NUM_SIZE];
@@ -56,28 +57,19 @@ public:
   char* ret_hex_all();
 };
 
-class CFPHPN {
-public:
-  FPHPN real;
-  FPHPN imag;
+// === ComplexNumber === //
 
-  CFPHPN();
-  CFPHPN(double, double);
-  CFPHPN(FPHPN, FPHPN);
+// --- Special --- //
 
-  CFPHPN next_iter_opt(CFPHPN); // optimized, low-level implementation
-  CFPHPN next_iter_ref(CFPHPN); // reference, implementation using FPHPN operators
+CFPHPN next_iteration_opt(CFPHPN, CFPHPN); // optimized, low-level implementation
 
-  CFPHPN next_iteration(CFPHPN C){ return next_iter_ref(C);};
+bool calc_esc_double(CFPHPN); // calc `esc`: |Z| > 2 - via conversion to double
+bool calc_esc_opt(CFPHPN);    // calc `esc`: |Z| > 2 - via approximations and FPHPN operators
+bool calc_esc_ref(CFPHPN);    // calc `esc`: norm > 4 - via norm
 
-  bool calc_esc_double(); // calc `esc`: |Z| > 2 - via conversion to double
-  bool calc_esc_opt();    // calc `esc`: |Z| > 2 - via approximations and FPHPN operators
+// --- Default --- //
 
-  bool calc_esc(){ return calc_esc_opt();};
-};
-
-// === Functions === //
-
-int escapetime(CFPHPN, CFPHPN, int);
+template <> inline CFPHPN next_iteration(CFPHPN Z, CFPHPN C){ return next_iteration_opt(Z,C);}
+template <> inline bool calc_esc(CFPHPN X){ return calc_esc_opt(X);}
 
 #endif

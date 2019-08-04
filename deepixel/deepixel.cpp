@@ -8,6 +8,7 @@
  */
 
 #include "deepixel.hpp"
+#include "../common/complex.hpp"
 
 #include <cstdio> // printf
 #include <cstdbool> // boolean variables
@@ -77,7 +78,6 @@ FPHPN::FPHPN(char * str) {
   // Format: "[+-]%2X.%08X.%08X..." (repeating)
   std::memset(digits, 0, sizeof(digits));
   char buf;
-  INT buffer;
   std::sscanf(str,"%c%2X",&buf,&digits[0]);
   neg = buf == '-';
   str += 3;
@@ -216,7 +216,7 @@ double FPHPN::ret_double(){
 char* FPHPN::ret_hex(){
   // Return first 3 digits in hexadecimal text representation
   // Assuming INT_SIZE=32u, NUM_SIZE >= 3
-  char* s = (char*) malloc(sizeof(char)*21);
+  char* s = (char*) malloc(sizeof(char)*22);
   std::sprintf(s,"+%2X.%08X.%08X",digits[0],digits[1],digits[2]);
   if (neg){
     s[0] = '-';
@@ -240,34 +240,16 @@ char* FPHPN::ret_hex_all(){
   return s;
 }
 
-// ===== CFPHPN ===== //
-
-// --- Constructors --- //
-
-CFPHPN::CFPHPN(){
-  real = FPHPN();
-  imag = FPHPN();
-}
-
-CFPHPN::CFPHPN(double r, double i){
-  real = FPHPN(r);
-  imag = FPHPN(i);
-}
-
-CFPHPN::CFPHPN(FPHPN r, FPHPN i){
-  real = r;
-  imag = i;
-}
+// ===== Complex FPHPN ===== //
 
 // --- Calculation --- //
 
-CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
+CFPHPN next_iteration_opt(CFPHPN Z, CFPHPN C){
   INT2 bufferR, bufferI, bufferRI;
   HPNSignedCarry carryR = {0};
   HPNSignedCarry carryI = {0};
   bool x2;
   CFPHPN Zn;
-  CFPHPN Z = *this;
 
   bool negRI = Z.real.neg ^ Z.imag.neg;
 
@@ -382,55 +364,29 @@ CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
   return Zn;
 }
 
-CFPHPN CFPHPN::next_iter_ref(CFPHPN C){
-  CFPHPN Z = *this;
-  FPHPN Zr2 = Z.real * Z.real;
-  FPHPN Zi2 = Z.imag * Z.imag;
-  CFPHPN Zn;
-  Zn.real = (Zr2-Zi2)+C.real;
-  Zn.imag = (Z.real*Z.imag*FPHPN(2))+C.imag;
-  return Zn;
+bool calc_esc_ref(CFPHPN X){
+  return norm(X).digits[0] >= 4;
 }
 
-bool CFPHPN::calc_esc_double(){
-  double r = this->real.ret_double();
-  double i = this->imag.ret_double();
+bool calc_esc_double(CFPHPN X){
+  double r = X.real.ret_double();
+  double i = X.imag.ret_double();
   return r*r + i*i >= 4;
 }
 
-bool CFPHPN::calc_esc_opt(){
-  if (this->real.digits[0] + this->imag.digits[0] + (((INT2)this->real.digits[1]+this->imag.digits[1]) >> INT_BITS)
+bool calc_esc_opt(CFPHPN X){
+  if (X.real.digits[0] + X.imag.digits[0] + (((INT2)X.real.digits[1]+X.imag.digits[1]) >> INT_BITS)
   >= CONST_2SQRT2){
     return true; // with 'Mittelungleichung'
   }
-  else if (this->real.digits[0] < 1 && this->imag.digits[0] < 1){
+  else if (X.real.digits[0] < 1 && X.imag.digits[0] < 1){
     return false;
   }
-  else if (this->real.digits[0] * this->imag.digits[0] +
-  (((INT2) this->real.digits[0] * this->imag.digits[1] + this->real.digits[1] * this->imag.digits[0]) >> INT_BITS) > 4){
+  else if (X.real.digits[0] * X.imag.digits[0] +
+  (((INT2) X.real.digits[0] * X.imag.digits[1] + X.real.digits[1] * X.imag.digits[0]) >> INT_BITS) > 4){
     return true;
   }
   else{
-    return (this->real * this->real + this->imag * this->imag).digits[0] >= 4;
+    return calc_esc_ref(X);
   }
 }
-
-// --- Return Functions --- //
-
-
-// === FUNCTIONS === //
-
-int escapetime(CFPHPN C, CFPHPN D, int maxI){
-  CFPHPN Z = D;
-  if (Z.calc_esc()){
-    return 0;
-  }
-  for (int iter=1; iter<maxI; iter++){
-    Z = Z.next_iteration(C);
-    if (Z.calc_esc()){
-      return iter;
-    }
-  }
-  return maxI;
-}
-

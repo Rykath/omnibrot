@@ -20,11 +20,15 @@
 #include <ctime>
 
 #include "../deepixel/deepixel.hpp"
+#include "../common/complex.hpp"
 #include "../common/asdf.hpp"
 
 #define TYPE_ITER uint16_t
-#define COMPLEX CFPHPN
 #define BASE FPHPN
+#define COMPLEX ComplexNumber<BASE>
+
+#define STRINGIFY(X) #X
+#define STRING_MACRO(X) STRINGIFY(X)
 
 using namespace std;
 
@@ -69,6 +73,10 @@ int main(int argc, char** argv){
   fprintf(fptr, "    center: ['%s','%s']\n",argv[2],argv[3]);
   fprintf(fptr, "    range: ['%s','%s']\n",argv[4],argv[5]);
   fprintf(fptr, "    max-Iter: '%s'\n",argv[6]);
+  fprintf(fptr, "  configuration:\n");
+  fprintf(fptr, "    TYPE_ITER: " STRING_MACRO(TYPE_ITER) "\n");
+  fprintf(fptr, "    BASE_TYPE: " STRING_MACRO(BASE) "\n");
+  fprintf(fptr, "    COMPLEX_TYPE: " STRING_MACRO(COMPLEX) "\n");
   fprintf(fptr, "sector:\n");
   fprintf(fptr, "  center:\n");
   fprintf(fptr, "    real: '%s'\n", center.real.ret_hex_all());
