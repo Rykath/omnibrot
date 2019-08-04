@@ -1,3 +1,4 @@
+#!./venv/bin/python3
 """
 deepixel-test.py
 test deepixel library - simple mandelbrot
@@ -8,85 +9,41 @@ by Mittagskogel
 
 import pybrot
 
-import subprocess
-import math
-import time
+import asdf
+import sys
 
-from matplotlib import cm
+# Arguments: <path_asdf> <path_output>
+path_asdf = ''
+path_output = ''
+try:
+    path_asdf = sys.argv[1]
+    path_output = sys.argv[2]
+except (IndexError, ValueError):
+    print('Wrong number of Arguments')
+    print('Usage: <program> <path_to_input_asdf> <path_to_output_png>')
+    exit(1)
 
-
-def color_log(raw):
-    if raw == maxIteration:
-        return 0
-    else:
-        f = 1024.0
-        return math.log(1 + raw*f, 1 + f)
-
-
-def color_sigmoid(raw):
-    if raw == maxIteration:
-        return 0
-    else:
-        alpha = 0.2
-        sig = 1.0 / (1.0 + math.pow(math.e, -(raw-0.5)/alpha))
-        return (sig - 0.5) * 1.0 / (1.0 - 2.0 / (1.0 + math.pow(math.e, 0.5 / alpha))) + 0.5
-
-
-path_deepixel = './build/deepixel-mandelbrot'
-path_output = './results/deepixel_4+2_'
-
-""" = DESCRIPTION =
- * c++ program takes input as arguments (cr, ci, maxIter)
- * collect escapetime from stdout
- * output everything as png
-"""
-
-width = 512
-height = width
-maxColor = 255
-maxIteration = 1024
-center = -1.5+0.0j
-size = 1e-09 * (1+1j)
-spacing = size.real/width + 1j*size.imag/height
-datestr = time.strftime("%Y%m%d%H%M%S", time.gmtime())
-
-# Normalize
-normalize = True
-
-# Intensity mapping
-im = lambda x: color_sigmoid(color_log(x))
-
-# Color mapping
-# See https://matplotlib.org/gallery/color/colormap_reference.html for stock colormaps.
-# Set to None for bw rendering
-cm_map = cm.get_cmap('viridis')
-
-
-path_output += '{}sq_{}i_{}_{}_{}sq_{}.png'.format(width, maxIteration, center.real, center.imag, size.real, datestr)
-
-dataIn = subprocess.run([path_deepixel, '{}x{}'.format(width, height), str(size.real), str(size.imag), str(center.real),
-                         str(center.imag), str(maxIteration)], encoding="utf-8", stdout=subprocess.PIPE).stdout
+af = asdf.open(path_asdf)
+data = [[float(i) for i in j] for j in af.tree['data-raw']]
+maxIteration = int(af.tree['debug']['original-arguments']['max-Iter'])
+samples = [len(data[0]), len(data)]
 
 print('data collected')
 
-if normalize:
-    fdata = [[0 if int(i) == maxIteration else int(i) for i in line.split()] for line in dataIn.strip().split('\n')]
-    maximum = max([max(i) for i in fdata])
-    minimum = min([min(i) for i in fdata])
-    fdata = [[im((j-minimum)/(maximum-minimum)) for j in i] for i in fdata]
-else:
-    fdata = [[im(0 if int(i) == maxIteration else int(i)/maxIteration) for i in line.split()] for line in dataIn.strip().split('\n')]
+for j, row in enumerate(data):
+    for i, value in enumerate(row):
+        # set non-escaping to 0
+        value = pybrot.image.value_replace(value, maxIteration, 0)
+        # intensity mapping
+        data[j][i] = pybrot.image.color_sigmoid(pybrot.image.color_log(value, f=256), alpha=0.8)
+# normalize
+data = pybrot.image.normalize(data)
 
-if cm_map:
-    # Apply colormap.
-    fdata = cm_map(fdata)
-    
-    # Convert color data to suitable array for pypng output.
-    data = [[[int(k*maxColor) for k in j] for j in i] for i in fdata]
-else:
-    data = [[int(j*maxColor) for j in i] for i in fdata]
+# colormap
+data = pybrot.image.colormap(data, max_color=255, name='viridis')
+data = pybrot.image.flatten(data)
 
-img = pybrot.image.RawImage(data)
-img.write_png(path_output)
+# export
+pybrot.image.write_raw_png(data, path_output, samples, greyscale=False)
 
 print('done - file written to: '+path_output)
