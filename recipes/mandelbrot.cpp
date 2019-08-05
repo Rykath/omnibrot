@@ -77,6 +77,8 @@ int main(int argc, char** argv){
   fprintf(fptr, "    TYPE_ITER: " STRING_MACRO(TYPE_ITER) "\n");
   fprintf(fptr, "    BASE_TYPE: " STRING_MACRO(BASE) "\n");
   fprintf(fptr, "    COMPLEX_TYPE: " STRING_MACRO(COMPLEX) "\n");
+  fprintf(fptr, "    NUM_SIZE: " STRING_MACRO(NUM_SIZE) "\n");
+  fprintf(fptr, "    CALC_SIZE: " STRING_MACRO(CALC_SIZE) "\n");
   fprintf(fptr, "sector:\n");
   fprintf(fptr, "  center:\n");
   fprintf(fptr, "    real: '%s'\n", center.real.ret_hex_all());

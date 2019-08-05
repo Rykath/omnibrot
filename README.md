@@ -1,15 +1,30 @@
-# How-To: Test deepixel
-* Requirements
-  * cmake
-  * python3 with pypng
-* Compile the `deepixel` library with the `mandel` test-program.
-  * pull the repository form git and `cd` into it.
-  * `mkdir ./build` then `cd build` and `cmake ../deepixel`
-  * `make deepixel-mandelbrot`, you should now have a `deepixel-mandelbrot` binary
-  * setup the results directory: `cd ..`, `mkdir results`
-  * and finally you can execute the script, e.g.: `python3 ./deepixel-test.py`
-* You can change all parameters inside the python-script, however if you want to change calculation accuracy you have to
-do that in `deepxiel.hdd` and recompile.
-* **DO NOT** push your changes back upstream! Do not clutter the repository with build and results...
-  * you might want to create these directories somewhere else instead... 
-  (you then have to adjust the paths in the python-script)
+# Omnibrot
+## Requirements
+* cmake
+  * C/C++
+* python 3
+  * pypng
+  * matplotlib
+  * asdf
+
+## Current Toolchain & Workflow
+
+* results/mandelbrot
+  * calculate a simple Mandelbrot with High Precision
+  * Output raw data in ASDF format
+* deepixel-test.py
+  * read raw data & metadata from ASDF format
+  * apply coloration
+  * export in png format
+
+## Components
+* *common*
+  * *asdf* - helper functions to write in simple ASDF format
+  * *complex* - complex number class template
+* *deepixel* - high precision calculation
+  * *deepixel* - high precision fixed point arithmetic
+* *pybrot* - python utilities
+  * *image* - helper functions to easily colorize and export an image
+* *recipes*
+  * *mandelbrot* - simple mandelbrot using *deepixel* `FPHPN` and exporting ASDF
+* *test-deepixel* - simple recolor and export from ASDF to png

@@ -1,6 +1,7 @@
 """
 image.py
 by Robert Babin (Oswell Whent <xbrot.rykath@xoxy.net>)
+ & Mittagskogel
 """
 
 # --- Imports --- #

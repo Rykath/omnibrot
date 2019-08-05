@@ -30,14 +30,12 @@ samples = [len(data[0]), len(data)]
 
 print('data collected')
 
-for j, row in enumerate(data):
-    for i, value in enumerate(row):
-        # set non-escaping to 0
-        value = pybrot.image.value_replace(value, maxIteration, 0)
-        # intensity mapping
-        data[j][i] = pybrot.image.color_sigmoid(pybrot.image.color_log(value, f=256), alpha=0.8)
+# set non-escaping to 0
+data = [[pybrot.image.value_replace(value, maxIteration, 0) for value in row] for row in data]
 # normalize
 data = pybrot.image.normalize(data)
+# intensity mapping
+data = [[pybrot.image.color_sigmoid(pybrot.image.color_log(value, f=256), alpha=0.8) for value in row] for row in data]
 
 # colormap
 data = pybrot.image.colormap(data, max_color=255, name='viridis')
