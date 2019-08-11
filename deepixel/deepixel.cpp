@@ -8,6 +8,7 @@
  */
 
 #include "deepixel.hpp"
+#include "../common/complex.hpp"
 
 #include <cstdio> // printf
 #include <cstdbool> // boolean variables
@@ -67,6 +68,23 @@ FPHPN::FPHPN(double number){
     digits[i] = (INT) number;
     number -= digits[i];
     number *= INT_SIZE;
+  }
+}
+
+FPHPN::FPHPN(char * str) {
+  // Read all digits in hexadecimal text representation
+  // Assuming INT_SIZE=32u
+  // Related: ret_hex() and ret_hex_all()
+  // Format: "[+-]%2X.%08X.%08X..." (repeating)
+  std::memset(digits, 0, sizeof(digits));
+  char buf;
+  std::sscanf(str,"%c%2X",&buf,&digits[0]);
+  neg = buf == '-';
+  str += 3;
+  int i  = 1;
+  while (i < NUM_SIZE and std::sscanf(str, ".%8X",&digits[i])){
+    str += 9;
+    i += 1;
   }
 }
 
@@ -198,7 +216,7 @@ double FPHPN::ret_double(){
 char* FPHPN::ret_hex(){
   // Return first 3 digits in hexadecimal text representation
   // Assuming INT_SIZE=32u, NUM_SIZE >= 3
-  char* s = (char*) malloc(sizeof(char)*21);
+  char* s = (char*) malloc(sizeof(char)*22);
   std::sprintf(s,"+%2X.%08X.%08X",digits[0],digits[1],digits[2]);
   if (neg){
     s[0] = '-';
@@ -211,59 +229,39 @@ char* FPHPN::ret_hex_all(){
   // Assuming INT_SIZE=32u
   // Related: ret_hex()
   char* s = (char*) malloc(sizeof(char)*(3+(NUM_SIZE-1)*9));
-  std::sprintf(s, "+%2X",digits[0]);
+  char* sp = s;
+  sp += std::sprintf(sp, "+%2X",digits[0]);
   if (neg){
     s[0] = '-';
   }
   for (int i = 1; i < NUM_SIZE; i++){
-    std::sprintf(s, "%s.%08X",s,digits[i]);
+    sp += std::sprintf(sp, ".%08X",digits[i]);
   }
   return s;
 }
 
-// ===== CFPHPN ===== //
-
-// --- Constructors --- //
-
-CFPHPN::CFPHPN(){
-  real = FPHPN();
-  imag = FPHPN();
-  esc = false;
-}
-
-CFPHPN::CFPHPN(double r, double i){
-  real = FPHPN(r);
-  imag = FPHPN(i);
-  esc = (r*r + i*i > 4);
-}
-
-CFPHPN::CFPHPN(FPHPN r, FPHPN i){
-  real = r;
-  imag = i;
-  esc = (r*r + i*i).digits[0] >= 4;
-}
+// ===== Complex FPHPN ===== //
 
 // --- Calculation --- //
 
-CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
+CFPHPN next_iteration_opt(CFPHPN Z, CFPHPN C){
   INT2 bufferR, bufferI, bufferRI;
   HPNSignedCarry carryR = {0};
   HPNSignedCarry carryI = {0};
   bool x2;
   CFPHPN Zn;
-  CFPHPN Z = *this;
 
   bool negRI = Z.real.neg ^ Z.imag.neg;
 
-  for (int sum = NUM_SIZE+CALC_SIZE-1; sum >= 0; sum--){        //  loop carry
-    for (int i = 0; i <= sum; i++){                             //    loop multiplication
-      if (sum-i >= NUM_SIZE || i >= NUM_SIZE){ continue; }      //      catch borders
-      if (i <= sum/2){                                          //      reduced loop for squaring Zr and Zi - calculate Zr
+  for (int sum = NUM_SIZE+CALC_SIZE-1; sum >= 0; sum--){        // loop carry
+    for (int i = 0; i <= sum; i++){                             // loop multiplication
+      if (sum-i >= NUM_SIZE || i >= NUM_SIZE){ continue; }      // catch borders
+      if (i <= sum/2){                                          // reduced loop for squaring Zr and Zi - calculate Zr
         bufferR = Z.real.digits[i];
         bufferR *= Z.real.digits[sum-i];
         bufferI = Z.imag.digits[i];
         bufferI *= Z.imag.digits[sum-i];
-        x2 = (2*i != sum);                                      //      binomial formula, x2 for all non-squares
+        x2 = (2*i != sum);                                      // binomial formula, x2 for all non-squares
         if (sum == 0){
           carryR[sum] += bufferR << x2;
           carryR[sum] -= bufferI << x2;
@@ -275,7 +273,7 @@ CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
           carryR[sum-1] -= (bufferI >> INT_BITS) << x2;
         }
       }
-      bufferRI = Z.real.digits[i];                              //      multiplying Zr and Zi - calculate Zi
+      bufferRI = Z.real.digits[i];                              // multiplying Zr and Zi - calculate Zi
       bufferRI *= Z.imag.digits[sum-i];
       if (sum == 0){
         if (negRI){ carryI[sum] -= bufferRI << 1u;}
@@ -292,7 +290,7 @@ CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
         }
       }
     }
-    if (sum < NUM_SIZE){                                        //    Adding C
+    if (sum < NUM_SIZE){                                        // Adding C
       if (C.real.neg){
         carryR[sum] -= C.real.digits[sum];
       }
@@ -310,7 +308,7 @@ CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
       if (carryR[sum] < 0) {
         carryR[sum - 1] -= (INT2) labs(carryR[sum]) >> INT_BITS;
         carryR[sum] = (INT2) labs(carryR[sum]) & INT_FULL;
-        if (carryR[sum] > 0) {
+        if (carryR[sum] != 0) {
           carryR[sum - 1] -= 1;
           carryR[sum] = INT_SIZE - carryR[sum];
         }
@@ -353,56 +351,42 @@ CFPHPN CFPHPN::next_iter_opt(CFPHPN C){
     if (Zn.real.neg && carryR[i] > 0){      // no need to check for != 0, [0] is always < 0
       carryR[i] = -1*carryR[i];
       carryR[i-1] += 1;
-      carryR[i] += INT_FULL;
+      carryR[i] += INT_SIZE;
     }
     Zn.real.digits[i] = labs(carryR[i]);
     if (Zn.imag.neg && carryI[i] > 0){
       carryI[i] = -1*carryI[i];
       carryI[i-1] += 1;
-      carryI[i] += INT_FULL;
+      carryI[i] += INT_SIZE;
     }
     Zn.imag.digits[i] = labs(carryI[i]);
   }
-  // check escaped: abs(z) >= 2
-  //Zn.esc = Zn.real.ret_double()*Zn.real.ret_double() + Zn.imag.ret_double()*Zn.imag.ret_double() > 4;
-
-  if (Zn.real.digits[0]+Zn.imag.digits[0]+(((INT2)Zn.real.digits[1]+Zn.imag.digits[1]) >> INT_BITS) >= CONST_2SQRT2){
-    Zn.esc = true; // with 'Mittelungleichung'
-  }
-  else if (Zn.real.digits[0] < 1 && Zn.imag.digits[0] < 1){
-    Zn.esc = false;
-  }
-  else{ // harsh approximation
-    Zn.esc = (Zn.real.digits[0]*Zn.imag.digits[0] + (((INT2)Zn.real.digits[0]*Zn.imag.digits[1] +
-            Zn.real.digits[1]*Zn.imag.digits[0]) >> INT_BITS) > 2);
-  }
   return Zn;
 }
 
-CFPHPN CFPHPN::next_iter_ref(CFPHPN C){
-  CFPHPN Z = *this;
-  FPHPN Zr2 = Z.real * Z.real;
-  FPHPN Zi2 = Z.imag * Z.imag;
-  CFPHPN Zn;
-  Zn.real = (Zr2-Zi2)+C.real;
-  Zn.imag = (Z.real*Z.imag*FPHPN(2))+C.imag;
-  Zn.esc = ((Zn.real*Zn.real + Zn.imag*Zn.imag).digits[0] >= 4);
-  return Zn;
+bool calc_esc_ref(CFPHPN X){
+  return norm(X).digits[0] >= 4;
 }
 
-// --- Return Functions --- //
+bool calc_esc_double(CFPHPN X){
+  double r = X.real.ret_double();
+  double i = X.imag.ret_double();
+  return r*r + i*i >= 4;
+}
 
-
-// === FUNCTIONS === //
-
-int escapetime(CFPHPN C, CFPHPN D, int maxI){
-  CFPHPN Z = D;
-  for (int iter=0; iter<maxI; iter++){
-    Z = Z.next_iteration(C);
-    if (Z.esc){
-      return iter;
-    }
+bool calc_esc_opt(CFPHPN X){
+  if (X.real.digits[0] + X.imag.digits[0] + (((INT2)X.real.digits[1]+X.imag.digits[1]) >> INT_BITS)
+  >= CONST_2SQRT2){
+    return true; // with 'Mittelungleichung'
   }
-  return maxI;
+  else if (X.real.digits[0] < 1 && X.imag.digits[0] < 1){
+    return false;
+  }
+  else if (X.real.digits[0] * X.imag.digits[0] +
+  (((INT2) X.real.digits[0] * X.imag.digits[1] + X.real.digits[1] * X.imag.digits[0]) >> INT_BITS) > 4){
+    return true;
+  }
+  else{
+    return calc_esc_ref(X);
+  }
 }
-

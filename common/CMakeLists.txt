@@ -1,0 +1,1 @@
+add_library(asdf STATIC asdf.cpp)
