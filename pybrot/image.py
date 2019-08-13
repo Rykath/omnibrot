@@ -61,6 +61,8 @@ def colormap_grey(data, max_color):
 def normalize(data):
     maximum = max([max(i) for i in data])
     minimum = min([min(i) for i in data])
+    if maximum == minimum:
+        print('Error: min=max')
     return [[(j-minimum)/(maximum-minimum) for j in i] for i in data]
 
 
