@@ -21,12 +21,36 @@ public:
 
   // --- Constructors --- //
   ComplexNumber(){
-    real = BaseType();
-    imag = BaseType();
+    real = BaseType(0);
+    imag = BaseType(0);
   }
+
+  ComplexNumber(BaseType R){
+    real = R;
+    imag = BaseType(0);
+  }
+
+  template <class OtherBaseType>
+  ComplexNumber(ComplexNumber<OtherBaseType> C){
+    real = C.real;
+    imag = C.imag;
+  }
+
+  template <class OtherType>
+  ComplexNumber(OtherType R){
+    real = BaseType(R);
+    imag = BaseType(0);
+  }
+
   ComplexNumber(BaseType R ,BaseType I){
     real = R;
     imag = I;
+  }
+
+  template <class OtherType>
+  ComplexNumber(OtherType R, OtherType I){
+    real = BaseType(R);
+    imag = BaseType(I);
   }
 };
 
@@ -49,6 +73,15 @@ ComplexNumber<BaseType> operator* (ComplexNumber<BaseType> A, ComplexNumber<Base
 template <class BaseType>
 BaseType norm (ComplexNumber<BaseType> X) {
   return X.real * X.real + X.imag * X.imag;
+}
+
+template <class BaseType>
+ComplexNumber<BaseType> pow(ComplexNumber<BaseType> C, unsigned int E){
+  ComplexNumber<BaseType> X = C;
+  for (unsigned int i=1; i<E; i++){
+    X = X * C;
+  }
+  return X;
 }
 
 // --- Special --- //
