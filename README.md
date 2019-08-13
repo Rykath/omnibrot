@@ -9,7 +9,7 @@
 
 ## Current Toolchain & Workflow
 
-* results/mandelbrot
+* recipes/mandelbrot
   * calculate a simple Mandelbrot with High Precision
   * Output raw data in ASDF format
 * deepixel-test.py
