@@ -54,10 +54,6 @@ def colormap_grey(data, bit_depth):
     return [int(value * (2**bit_depth-1)) for value in data]
 
 
-def normalize(data, minimum, maximum):
-    return [(value-minimum)/(maximum-minimum) for value in data]
-
-
 # --- Export Functions --- #
 
 
