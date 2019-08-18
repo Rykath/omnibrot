@@ -50,7 +50,7 @@ def colormap(data, bit_depth, name=None):
         return colormap_grey(data, bit_depth)
 
 
-def colormap_grey(data, max_color):
+def colormap_grey(data, bit_depth):
     return [int(value * (2**bit_depth-1)) for value in data]
 
 

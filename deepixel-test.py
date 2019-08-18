@@ -40,33 +40,32 @@ print('  samples: %dx%d (%.2fMP)' % (samples[0], samples[1], samples[0] * sample
 
 # set non-escaping to 0
 print('Zero unescaped samples', end='...   ', flush=True)
-zero = np.array([value for value in range(maxIteration+1)])
+zero = np.array(range(maxIteration+1))
 zero[-1] = minIteration
+# apply lookup table to data
+# same as [zero[value] for value in data]
 data = zero[data]
 print('done')
 
-# normalize
-print('Normalize samples', end='...        ', flush=True)
+# remap
+print('Remap samples', end='...            ', flush=True)
 maxIteration = data.max()
-lookup = list(range(minIteration, maxIteration+1))
-lookup = pybrot.image.normalize(lookup, minimum=minIteration, maximum=maxIteration)
+lookup = np.linspace(0, 1, maxIteration-minIteration+1)
+lookup = [pybrot.image.color_sigmoid(pybrot.image.color_log(value, f=maxIteration), alpha=0.2) for value in lookup]
 print('done')
 print('  maxIteration (true): %d' % maxIteration)
 
-# remap
-print('Remap samples', end='...            ', flush=True)
-lookup = [pybrot.image.color_sigmoid(pybrot.image.color_log(value, f=maxIteration), alpha=0.2) for value in lookup]
-print('done')
-
 # colormap (Set name to None for greyscale mapping)
 print('Apply color map', end='...          ', flush=True)
-lookup = pybrot.image.colormap(lookup, bit_depth=8, name='plasma')
+lookup = np.array(pybrot.image.colormap(lookup, bit_depth=8, name='plasma'))
 print('done')
 
 # apply lookup table to data
 print('Apply lookup table', end='...       ', flush=True)
-lookup = np.array(lookup)
+# apply lookup table to data
+# same as [lookup[value] for value in data]
 data = lookup[data-minIteration]
+# flatten rgb value tuples in data
 if(isinstance(lookup[0], np.ndarray)):
     data = data.reshape([samples[1], samples[0]*3])
 print('done')
