@@ -12,8 +12,7 @@
 #include "../deepixel/deepixel.hpp"
 #include "../common/complex.hpp"
 
-// - test_relative - test_complex - test_FPHPN
-#define TEST test_relative_approx
+#define TEST test_relative_norm
 
 // --- HELPER --- //
 
@@ -82,6 +81,24 @@ void test_relative_approx(){
     printf("of+ : %f %f\n",Zcen.real+offset.real,Zcen.imag+offset.imag);
     printf("Zo  : %f %f\n",Zo.real,Zo.imag);
   }
+}
+
+void test_relative_norm(){
+  ComplexNumber<FPHPN> fp1 = ComplexNumber<FPHPN>(1.29384,0.38492);
+  ComplexNumber<FPHPN> fp2 = ComplexNumber<FPHPN>(-1.29384,0.38492);
+  ComplexNumber<FPHPN> fp3 = ComplexNumber<FPHPN>(1.29384,-0.38492);
+  ComplexNumber<FPHPN> fp4 = ComplexNumber<FPHPN>(-1.29384,-0.38492);
+  ComplexNumber<double> offset1 = ComplexNumber<double>(0.001283,0.0023884);
+  ComplexNumber<double> offset2 = ComplexNumber<double>(-0.001283,0.0023884);
+  ComplexNumber<double> offset3 = ComplexNumber<double>(0.001283,-0.0023884);
+  ComplexNumber<double> offset4 = ComplexNumber<double>(-0.001283,-0.0023884);
+
+  printf("norm-fp:       %8.5f %8.5f %8.5f %8.5f\n",double(norm(fp1)),double(norm(fp2)),double(norm(fp3)),double(norm(fp4)));
+  printf("norm-rel-fp1:  %8.5f %8.5f %8.5f %8.5f\n",norm(fp1,offset1),norm(fp1,offset2),norm(fp1,offset3),norm(fp1,offset4));
+  printf("norm2-rel-fp1: %8.5f %8.5f %8.5f %8.5f\n",norm2(fp1,offset1),norm2(fp1,offset2),norm2(fp1,offset3),norm2(fp1,offset4));
+  printf("norm-rel-fp2:  %8.5f %8.5f %8.5f %8.5f\n",norm(fp2,offset1),norm(fp2,offset2),norm(fp2,offset3),norm(fp2,offset4));
+  printf("norm-rel-fp3:  %8.5f %8.5f %8.5f %8.5f\n",norm(fp3,offset1),norm(fp3,offset2),norm(fp3,offset3),norm(fp3,offset4));
+  printf("norm-rel-fp4:  %8.5f %8.5f %8.5f %8.5f\n",norm(fp4,offset1),norm(fp4,offset2),norm(fp4,offset3),norm(fp4,offset4));
 }
 
 void test_relative(){

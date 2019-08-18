@@ -25,7 +25,7 @@
 #include "../deepixel/deepixel.hpp"
 #include "../deepixel/relative.hpp"
 
-#define CALC_FUN calc_Relative2CenterDoubleApprox
+#define CALC_FUN calc_Relative2Center
 #define TYPE_ITER uint16_t
 #define PROGRESS_INTERVAL 8
 #define PEEK_ITERATION 64
@@ -87,27 +87,38 @@ void calc_double(FILE* fptr, ComplexNumber<FPHPN> center, ComplexNumber<double> 
 }
 
 void calc_Relative2Center(FILE* fptr, ComplexNumber<FPHPN> center, ComplexNumber<double> range, int width, int height, int maxIter){
+  // Calculate relative to reference path (with FPHPN) at sector center
+  // omits 0th iteration, sets D=C -> output one less than reference implementation (generic complex/escapetime)
+  // if the reference escapes, relative calculation is not possible beyond that point, so the iterations are capped
   ComplexNumber<FPHPN> Zcen [maxIter];
   double esc[maxIter];
+  TYPE_ITER Icen = maxIter;
   TYPE_ITER max;
   ComplexNumber<double> dZ, dC;
 
   Zcen[0] = center;
+  esc[0] = 4 - double(norm(Zcen[0]));
+  printf("Reference\n");
   for (int i=0; i<maxIter-1; i++){
-    esc[i] = 4 - double(norm(Zcen[i]));
     Zcen[i+1] = next_iteration(Zcen[i],center);
+    esc[i+1] = 4 - double(norm(Zcen[i+1]));
+    if (esc[i+1] < 0) {
+      Icen = i + 1;
+      printf("Reference escapes at %d/%d, capping maximum Iteration.\n", Icen,maxIter);
+      break;
+    }
   }
 
   for (int h=0; h<height; h++){
     if (h % (height / PROGRESS_INTERVAL) == 0){
       printf("Row: %d%% %d/%d\n",h*100/height,h,height);
     }
-    dC.imag = double(range.imag) * ((double(h)+0.5) / height - 0.5);
+    dC.imag = -1 * double(range.imag) * ((double(h)+0.5) / height - 0.5);
     for (int w=0; w<width; w++){
       dC.real = double(range.real) * ((double(w)+0.5) / width - 0.5);
       dZ = dC;
       max = maxIter;
-      for (TYPE_ITER i=0; i<TYPE_ITER(maxIter); i++){
+      for (TYPE_ITER i=0; i<Icen; i++){
         if (norm(Zcen[i],dZ) > esc[i]){
           fwrite(&i,sizeof(TYPE_ITER),1,fptr);
           max = 0;
@@ -453,6 +464,7 @@ int main(int argc, char** argv){
   fprintf(fptr, "    TYPE_ITER: " STRING_MACRO(TYPE_ITER) "\n");
   fprintf(fptr, "    NUM_SIZE: " STRING_MACRO(NUM_SIZE) "\n");
   fprintf(fptr, "    CALC_SIZE: " STRING_MACRO(CALC_SIZE) "\n");
+  fprintf(fptr, "    CALC_FUN: " STRING_MACRO(CALC_FUN) "\n");
   fprintf(fptr, "sector:\n");
   fprintf(fptr, "  center:\n");
   fprintf(fptr, "    real: '%s'\n", str(center.real));
