@@ -52,7 +52,7 @@ int main(int argc, char** argv){
   char* fname;
 
   // --- Arguments --- //
-  if (argc != 8) {
+  if (argc != 9) {
     fprintf(stderr,"Error: wrong number of arguments\n");
     exit(1);
   }

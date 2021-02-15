@@ -35,7 +35,8 @@
 #define TYPE_ITER_ASDF "uint16"
 #define ASDF_BYTEORDER "little"
 #define PROGRESS_INTERVAL 8
-
+#define ITERATION_CAP_FRACTION 1
+#define ITERATION_CAP_OFFSET -5
 // === Utility === //
 
 #define STRINGIFY(X) #X
@@ -54,7 +55,7 @@ int main(int argc, char** argv){
   char* fname;
 
   // --- Arguments --- //
-  if (argc != 8) {
+  if (argc != 9) {
     fprintf(stderr,"Error: wrong number of arguments\n");
     exit(1);
   }
@@ -79,8 +80,7 @@ int main(int argc, char** argv){
   ComplexNumber<FPHPN> Zcen [maxIter];
   double esc[maxIter];
   TYPE_ITER Icen = maxIter;
-  TYPE_ITER max;
-  ComplexNumber<double> dZ, dC;
+  TYPE_ITER Icap = maxIter;
 
   Zcen[0] = center;
   esc[0] = 4 - double(norm(Zcen[0]));
@@ -90,10 +90,13 @@ int main(int argc, char** argv){
     esc[i+1] = 4 - double(norm(Zcen[i+1]));
     if (esc[i+1] < 0) {
       Icen = i + 1;
-      printf("Reference escapes at %d/%d, capping maximum Iteration.\n", Icen,maxIter);
+      // cap iteration at fraction of the reference escape iteration
+      Icap = Icen * ITERATION_CAP_FRACTION + ITERATION_CAP_OFFSET;
+      printf("Reference escapes at %d/%d, capping maximum Iteration.\n", Icen, maxIter);
       break;
     }
   }
+  
 
   // === METADATA === //
   fptr = fopen(fname,"w");
@@ -114,12 +117,15 @@ int main(int argc, char** argv){
   fprintf(fptr, "    range: ['%s','%s']\n",argv[5],argv[6]);
   fprintf(fptr, "    max-Iter: '%s'\n",argv[7]);
   fprintf(fptr, "  calculation:\n");
-  fprintf(fptr, "    escape-iteration-center: %d",Icen);
+  fprintf(fptr, "    escape-iteration-center: %d\n", Icen);
+  fprintf(fptr, "    switch-relative-exact-iteration: %d\n", Icap);
   fprintf(fptr, "configuration:\n");
   fprintf(fptr, "  TYPE_ITER: " STRING_MACRO(TYPE_ITER) "\n");
   fprintf(fptr, "  FPHPN_INT_BITS: " STRING_MACRO(INT_BITS) "\n");
   fprintf(fptr, "  FPHPN_NUM_SIZE: " STRING_MACRO(NUM_SIZE) "\n");
   fprintf(fptr, "  FPHPN_CALC_SIZE: " STRING_MACRO(CALC_SIZE) "\n");
+  fprintf(fptr, "  ITERATION_CAP_FRACTION: " STRING_MACRO(ITERATION_CAP_FRACTION) "\n");
+  fprintf(fptr, "  ITERATION_CAP_OFFSET: " STRING_MACRO(ITERATION_CAP_OFFSET) "\n");
   fprintf(fptr, "sector:\n");
   fprintf(fptr, "  type: Mandelbrot\n");
   fprintf(fptr, "  center:\n");
@@ -144,6 +150,11 @@ int main(int argc, char** argv){
   // Calculate relative to reference path (with FPHPN) at sector center
   // omits 0th iteration, sets D=C -> output one less than reference implementation (generic complex/escapetime)
   // if the reference escapes, relative calculation is not possible beyond that point, so the iterations are capped
+  // however we can continue with normal FPHPN calculation from that point
+  ComplexNumber<double> dZ, dC;
+  ComplexNumber<FPHPN> Ze;
+  ComplexNumber<FPHPN> Ce;
+  bool escape;
 
   for (int h=0; h<height; h++){
     if (h % (height / PROGRESS_INTERVAL) == 0){
@@ -153,18 +164,30 @@ int main(int argc, char** argv){
     for (int w=0; w<width; w++){
       dC.real = double(range.real) * ((double(w)+0.5) / width - 0.5);
       dZ = dC;
-      max = maxIter;
-      for (TYPE_ITER i=0; i<Icen; i++){
-        if (norm(Zcen[i],dZ) > esc[i]){
-          fwrite(&i,sizeof(TYPE_ITER),1,fptr);
-          max = 0;
+      escape = false;
+      // relative calculation 
+      for (TYPE_ITER i = 0; i < Icap; i++){
+        // escapes
+        if (norm(Zcen[i], dZ) > esc[i]){
+          fwrite(&i, sizeof(TYPE_ITER), 1, fptr);
+          escape = true;
           break;
         }
-        dZ = next_iteration(Zcen[i],dZ,dC);
+        dZ = next_iteration(Zcen[i], dZ, dC);
       }
-      if (max){
-        fwrite(&max,sizeof(TYPE_ITER),1,fptr);
+      // handle escape & special cases
+      if (escape) {
+        continue;
       }
+      if (Icap == maxIter){
+        fwrite(&Icap, sizeof(TYPE_ITER), 1, fptr);
+        continue;
+      }
+      // continue with exact calculation
+      Ce = center + ComplexNumber<FPHPN>(dC);
+      Ze = Zcen[Icap] + ComplexNumber<FPHPN>(dZ);
+      int i = Icap + escapetime(Ce, Ze, maxIter - Icap);
+      fwrite(&i, sizeof(TYPE_ITER), 1, fptr);
     }
   }
   fclose(fptr);

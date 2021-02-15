@@ -32,8 +32,8 @@ public:
 
   template <class OtherBaseType>
   ComplexNumber(ComplexNumber<OtherBaseType> C){
-    real = C.real;
-    imag = C.imag;
+    real = BaseType(C.real);
+    imag = BaseType(C.imag);
   }
 
   template <class OtherType>

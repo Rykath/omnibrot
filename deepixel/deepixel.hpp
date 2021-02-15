@@ -55,12 +55,12 @@ public:
   operator double();
 };
 
-FPHPN operator+ (FPHPN, FPHPN);
-FPHPN operator- (FPHPN, FPHPN);
-inline FPHPN operator* (FPHPN A, FPHPN B){ return A.mult_lc(B);}
+FPHPN operator+ (const FPHPN&, const FPHPN&);
+FPHPN operator- (const FPHPN&, const FPHPN&);
+inline FPHPN operator* (FPHPN A, const FPHPN& B){ return A.mult_lc(B);}
 
-bool operator< (FPHPN, FPHPN);
-inline bool operator> (FPHPN A, FPHPN B){ return B < A;}
+bool operator< (const FPHPN&, const FPHPN&);
+inline bool operator> (const FPHPN& A, const FPHPN& B){ return B < A;}
 
 inline char* str(FPHPN X){ return X.ret_hex_all();}
 

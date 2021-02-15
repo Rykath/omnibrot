@@ -23,7 +23,7 @@
 
 // ===== FPHPN ===== //
 
-char compare(FPHPN A, char a, FPHPN B, char b){
+char compare(const FPHPN& A, char a, const FPHPN& B, char b){
   // based on absolute values, ignoring sign!
   bool zero = true;
   for (int i = 0; i < NUM_SIZE; i++){
@@ -43,7 +43,7 @@ char compare(FPHPN A, char a, FPHPN B, char b){
   return '='; // equal
 }
 
-char fphpn_larger(FPHPN** s, FPHPN** l, FPHPN num1, char c1, FPHPN num2, char c2){
+char fphpn_larger(const FPHPN** s, const FPHPN** l, const FPHPN& num1, char c1, const FPHPN& num2, char c2){
   // determine larger FPHPN
   // based on absolute values (.digits), ignoring sign (.neg)
   char c = compare(num1,c1,num2,c2);
@@ -115,7 +115,7 @@ FPHPN::FPHPN(char * str) {
 
 // --- Calculation & Operators --- //
 
-FPHPN operator+(FPHPN A, FPHPN B){
+FPHPN operator+(const FPHPN& A, const FPHPN& B){
   FPHPN C;
   // C = A + B
 	if (A.neg == B.neg){
@@ -131,8 +131,8 @@ FPHPN operator+(FPHPN A, FPHPN B){
 	}
 	else{
 	  // --- Subtraction --- //
-    FPHPN* hpnLptr;
-    FPHPN* hpnSptr;
+    const FPHPN* hpnLptr;
+    const FPHPN* hpnSptr;
     char larger = fphpn_larger(&hpnSptr, &hpnLptr, A, 'A', B, 'B');
     if (larger == '='){
       C.neg = false;
@@ -153,7 +153,7 @@ FPHPN operator+(FPHPN A, FPHPN B){
 	return C;
 }
 
-FPHPN operator-(FPHPN A, FPHPN B){
+FPHPN operator-(const FPHPN& A, const FPHPN& B){
   // depending on: operator+
   FPHPN sub = B;
   sub.neg = not sub.neg;
@@ -220,7 +220,7 @@ FPHPN FPHPN::mult_lc(const FPHPN& other){
   return res;
 }
 
-bool operator< (FPHPN A, FPHPN B){
+bool operator< (const FPHPN& A, const FPHPN& B){
   char c = compare(A, 'a', B, 'b');
   if (c == '0'){ return false;} // A == B
   else if (A.neg && !B.neg){ return true;} // A < B
