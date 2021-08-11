@@ -7,7 +7,7 @@ by Robert Babin (Oswell Whent <xbrot.rykath@xoxy.net>)
 # --- Imports --- #
 
 import png
-import math
+import numpy as np
 from matplotlib import cm
 
 
@@ -29,7 +29,7 @@ class Image:
 
 
 # --- Low Level Functions --- #
-
+# assume numpy arrays
 
 def value_replace(value, check, new=0):
     if value == check:
@@ -38,12 +38,12 @@ def value_replace(value, check, new=0):
 
 
 def color_log(value, f=1024):
-    return math.log(1 + value*f, 1 + f)
+    return np.log(1 + value * f) / np.log(1 + f)
 
 
 def color_sigmoid(value, alpha=0.2):
-    sig = 1.0 / (1.0 + math.pow(math.e, -(value-0.5)/alpha))
-    return (sig - 0.5) * 1.0 / (1.0 - 2.0 / (1.0 + math.pow(math.e, 0.5 / alpha))) + 0.5
+    sig = 1.0 / (1.0 + np.exp( -(value - 0.5) / alpha))
+    return (sig - 0.5) * 1.0 / (1.0 - 2.0 / (1.0 + np.exp(0.5 / alpha))) + 0.5
 
 
 def colormap(data, max_color, name=None):
@@ -51,27 +51,29 @@ def colormap(data, max_color, name=None):
     # See https://matplotlib.org/gallery/color/colormap_reference.html for stock colormaps.
     # Set to name to None for bw rendering
     # Apply colormap & Convert color data to suitable array for pypng output.
-    return [[[int(k*max_color) for k in j] for j in i] for i in cm.get_cmap(name)(data)]
+    
+    return (cm.get_cmap(name)(data) * max_color).astype(int)
 
 
 def colormap_grey(data, max_color):
-    return [[int(j*max_color) for j in i] for i in data]
+    return (data * max_color).astype(int)
 
 
 def normalize(data):
-    maximum = max([max(i) for i in data])
-    minimum = min([min(i) for i in data])
+    maximum = data.max()
+    minimum = data.min()
     if maximum == minimum:
         print('Error: min=max')
-    return [[(j-minimum)/(maximum-minimum) for j in i] for i in data]
+    return (data - minimum) / (maximum - minimum)
 
 
 def normalize_reference(data, reference):
     # usually: reference = max_iteration
-    return [[i/reference for i in row] for row in data]
+    return data / reference
 
 
 def flatten(data):
+    # keep old code
     return [[i for rgba in row for i in rgba[:-1]] for row in data]
 
 # --- Export Functions --- #

@@ -15,7 +15,6 @@
 
 #include <cstdio>
 #include <cstdlib>
-#include <cstdio>
 #include <cstdint>
 #include <ctime>
 #include <cstring>
@@ -45,7 +44,7 @@ char* str(double d){
 
 // --- Calculation --- //
 
-void calc_FPHPN(FILE* fptr, ComplexNumber<FPHPN> center, ComplexNumber<double> range, int width, int height, int maxIter){
+/*void calc_FPHPN(FILE* fptr, ComplexNumber<FPHPN> center, ComplexNumber<double> range, int width, int height, int maxIter){
   ComplexNumber<FPHPN> spacing, C, C0, D;
   TYPE_ITER I;
 
@@ -67,7 +66,7 @@ void calc_FPHPN(FILE* fptr, ComplexNumber<FPHPN> center, ComplexNumber<double> r
     }
     C.imag = C.imag - spacing.imag;
   }
-}
+}*/
 
 void calc_double(FILE* fptr, ComplexNumber<FPHPN> center, ComplexNumber<double> range, int width, int height, int maxIter){
   ComplexNumber<double> D, C;

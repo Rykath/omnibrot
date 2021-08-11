@@ -8,7 +8,9 @@ by Mittagskogel
 """
 
 import pybrot
+import pybrot.image as img
 
+import numpy as np
 import asdf
 import sys
 
@@ -34,33 +36,30 @@ except (IndexError, ValueError):
     exit(1)
 
 af = asdf.open(path_asdf)
-data = [[float(i) for i in j] for j in af.tree['data-raw']]
+data = np.asarray(af.tree['data-raw'], dtype=float)
 maxIteration = int(af.tree['debug']['original-arguments']['max-Iter'])
-samples = [len(data[0]), len(data)]
 
 data2 = []
 if mode == 'diff':
     af2 = asdf.open(path_asdf2)
-    data2 = [[float(i) for i in j] for j in af2.tree['data-raw']]
+    data2 = np.asarray(af2.tree['data-raw'], dtype=float)
     maxIteration2 = int(af2.tree['debug']['original-arguments']['max-Iter'])
-    samples = [len(data2[0]), len(data2)]
 
 print('data collected')
 
 # set non-escaping to 0
-data = [[pybrot.image.value_replace(value, maxIteration, 0) for value in row] for row in data]
+data[data == maxIteration] = 17905 #0
 if mode == 'diff':
-    data = [[data[i][j]-data2[i][j] for j, _ in enumerate(row)] for i, row in enumerate(data)]
+    data = data - data2
 # normalize
-data = pybrot.image.normalize(data)
+data = img.normalize(data)
 # intensity mapping
-data = [[pybrot.image.color_sigmoid(pybrot.image.color_log(value, f=256), alpha=0.8) for value in row] for row in data]
-
+data = img.color_sigmoid(img.color_log(data, f=256), alpha=0.8)
 # colormap
-data = pybrot.image.colormap(data, max_color=255, name='viridis')
-data = pybrot.image.flatten(data)
+data = img.colormap(data, max_color=255, name='plasma')
+datal = img.flatten(data) # array -> list
 
 # export
-pybrot.image.write_raw_png(data, path_output, samples, greyscale=False)
+img.write_raw_png(datal, path_output, data.shape, greyscale=False)
 
 print('done - file written to: '+path_output)
