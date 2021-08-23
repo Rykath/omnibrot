@@ -1,0 +1,17 @@
+# pyproject.toml
+#  specification of the build system - PEP 517
+#  see also: setup.cfg & setup.py
+
+[build-system]
+requires = [
+    "setuptools>=42",
+    "wheel",
+    "Cython>=3.0.0a9",
+    "setuptools_scm[toml]>=3.4",
+]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+# infers current version from git tag + commit
+# includes all files tracked by git in the source distribution
+

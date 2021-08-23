@@ -1,0 +1,2 @@
+# omnibrot package init
+
