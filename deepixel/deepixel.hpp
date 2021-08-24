@@ -43,19 +43,26 @@ public:
 
   FPHPN();
   FPHPN(double);
-  FPHPN(char*); // reverse of ret_hex and ret_hex_all()
+  FPHPN(int);
+  FPHPN(char*); // reverse of ret_hex and ret_hex_all() / reverse of str(FPHPN)
 
   FPHPN mult (const FPHPN&);
   FPHPN mult_lc (const FPHPN&); // alternate implementation of multiplication using a large carry
 
-  FPHPN operator+ (const FPHPN&);
-  FPHPN operator- (const FPHPN&);
-  FPHPN operator* (const FPHPN& other){ return mult_lc(other);};
-
-  double ret_double();
   char* ret_hex();
   char* ret_hex_all();
+
+  operator double();
 };
+
+FPHPN operator+ (const FPHPN&, const FPHPN&);
+FPHPN operator- (const FPHPN&, const FPHPN&);
+inline FPHPN operator* (FPHPN A, const FPHPN& B){ return A.mult_lc(B);}
+
+bool operator< (const FPHPN&, const FPHPN&);
+inline bool operator> (const FPHPN& A, const FPHPN& B){ return B < A;}
+
+inline char* str(FPHPN X){ return X.ret_hex_all();}
 
 // === ComplexNumber === //
 

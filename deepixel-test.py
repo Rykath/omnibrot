@@ -8,20 +8,32 @@ by Mittagskogel
 """
 
 import pybrot
+import pybrot.image as img
 
+import numpy as np
 import asdf
 import sys
 import numpy as np
 
-# Arguments: <path_asdf> <path_output>
+mode = ''
 path_asdf = ''
+path_asdf2 = ''
 path_output = ''
 try:
-    path_asdf = sys.argv[1]
-    path_output = sys.argv[2]
+    mode = sys.argv[1]
+    if mode == 'convert':
+        path_asdf = sys.argv[2]
+        path_output = sys.argv[3]
+    elif mode == 'diff':
+        path_asdf = sys.argv[2]
+        path_asdf2 = sys.argv[3]
+        path_output = sys.argv[4]
+    else:
+        raise ValueError
 except (IndexError, ValueError):
     print('Wrong number of Arguments')
-    print('Usage: <program> <path_to_input_asdf> <path_to_output_png>')
+    print("Usage: <program> 'convert' <path_to_input_asdf> <path_to_output_png>")
+    print("Usage: <program> 'diff' <path_to_input_asdf-1> <path_to_input_asdf-2> <path_to_output_asdf-2>")
     exit(1)
 
 print('Open file %s' % path_asdf, end='...   ', flush=True)

@@ -23,25 +23,44 @@
 
 // ===== FPHPN ===== //
 
-char fphpn_larger(FPHPN** s, FPHPN** l, FPHPN num1, char c1, FPHPN num2, char c2){
+char compare(const FPHPN& A, char a, const FPHPN& B, char b){
+  // based on absolute values, ignoring sign!
+  bool zero = true;
+  for (int i = 0; i < NUM_SIZE; i++){
+    if (A.digits[i] > B.digits[i]){
+      return a; // a larger than b
+    }
+    else if (A.digits[i] < B.digits[i]){
+      return b; // b larger than a
+    }
+    if (zero && A.digits[i] != 0){
+      zero = false;
+    }
+  }
+  if (zero){
+    return '0'; // both 0
+  }
+  return '='; // equal
+}
+
+char fphpn_larger(const FPHPN** s, const FPHPN** l, const FPHPN& num1, char c1, const FPHPN& num2, char c2){
   // determine larger FPHPN
   // based on absolute values (.digits), ignoring sign (.neg)
-  for (int i = 0; i < NUM_SIZE; i++){
-    if (num1.digits[i] > num2.digits[i]){
-      *s = &num2;
-      *l = &num1;
-      return c1;
-    }
-    else if (num1.digits[i] < num2.digits[i]){
-      *s = &num1;
-      *l = &num2;
-      return c2;
-    }
+  char c = compare(num1,c1,num2,c2);
+  if (c == c1){
+    *s = &num2;
+    *l = &num1;
+    return c1;
+  }
+  else if (c == c2){
+    *s = &num1;
+    *l = &num2;
+    return c2;
   }
   // default: s = num1, l = num2
   *s = &num1;
   *l = &num2;
-  return '=';
+  return '=';  // '0' -> '='
 }
 
 // --- Constructors --- //
@@ -71,6 +90,12 @@ FPHPN::FPHPN(double number){
   }
 }
 
+FPHPN::FPHPN(int number) {
+  std::memset(digits, 0, sizeof(digits));
+  neg = number < 0;
+  digits[0] = std::abs(number);
+}
+
 FPHPN::FPHPN(char * str) {
   // Read all digits in hexadecimal text representation
   // Assuming INT_SIZE=32u
@@ -90,49 +115,49 @@ FPHPN::FPHPN(char * str) {
 
 // --- Calculation & Operators --- //
 
-FPHPN FPHPN::operator+(const FPHPN& other){
-  FPHPN res;
+FPHPN operator+(const FPHPN& A, const FPHPN& B){
+  FPHPN C;
   // C = A + B
-	if (neg == other.neg){
+	if (A.neg == B.neg){
 		// --- Addition --- //
-		res.neg = neg;
+		C.neg = A.neg;
     INT2 buffer = 0;
     for (int i=NUM_SIZE-1; i>=0; i--){
-      buffer += digits[i];
-      buffer += other.digits[i];
-      res.digits[i] = buffer;
+      buffer += A.digits[i];
+      buffer += B.digits[i];
+      C.digits[i] = buffer;
       buffer = buffer >> INT_BITS;
     }
 	}
 	else{
 	  // --- Subtraction --- //
-    FPHPN* hpnLptr;
-    FPHPN* hpnSptr;
-    char larger = fphpn_larger(&hpnSptr, &hpnLptr, *this, 'A', other, 'B');
+    const FPHPN* hpnLptr;
+    const FPHPN* hpnSptr;
+    char larger = fphpn_larger(&hpnSptr, &hpnLptr, A, 'A', B, 'B');
     if (larger == '='){
-      res.neg = false;
+      C.neg = false;
       for (int i=0; i<NUM_SIZE; i++){
-        res.digits[i] = 0;
+        C.digits[i] = 0;
       }
-      return res;
+      return C;
     }
-    res.neg = hpnLptr->neg;
+    C.neg = hpnLptr->neg;
     INT2 buffer;
     INT2 carry = 0;
     for (int i=NUM_SIZE-1; i>=0; i--){
       buffer = carry + hpnSptr->digits[i];
       carry = (hpnLptr->digits[i] < buffer);
-      res.digits[i] = hpnLptr->digits[i] - buffer;
+      C.digits[i] = hpnLptr->digits[i] - buffer;
     }
   }
-	return res;
+	return C;
 }
 
-FPHPN FPHPN::operator-(const FPHPN& other){
+FPHPN operator-(const FPHPN& A, const FPHPN& B){
   // depending on: operator+
-  FPHPN sub = other;
+  FPHPN sub = B;
   sub.neg = not sub.neg;
-  return (*this + sub);
+  return (A + sub);
 }
 
 FPHPN FPHPN::mult(const FPHPN& other){
@@ -195,9 +220,19 @@ FPHPN FPHPN::mult_lc(const FPHPN& other){
   return res;
 }
 
+bool operator< (const FPHPN& A, const FPHPN& B){
+  char c = compare(A, 'a', B, 'b');
+  if (c == '0'){ return false;} // A == B
+  else if (A.neg && !B.neg){ return true;} // A < B
+  else if (!A.neg && B.neg){ return false;} // A > B
+  else if (c == '='){ return false;} // A == B
+  else if (c == 'b'){ return true;} // B > A
+  return false;
+}
+
 // --- Return Functions --- //
 
-double FPHPN::ret_double(){
+FPHPN::operator double(){
   double d = 0;
   double a;
   for (int i = 0; i < NUM_SIZE; i++){
@@ -369,8 +404,8 @@ bool calc_esc_ref(CFPHPN X){
 }
 
 bool calc_esc_double(CFPHPN X){
-  double r = X.real.ret_double();
-  double i = X.imag.ret_double();
+  double r = X.real;
+  double i = X.imag;
   return r*r + i*i >= 4;
 }
 

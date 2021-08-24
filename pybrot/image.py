@@ -7,7 +7,7 @@ by Robert Babin (Oswell Whent <xbrot.rykath@xoxy.net>)
 # --- Imports --- #
 
 import png
-import math
+import numpy as np
 from matplotlib import cm
 
 
@@ -29,14 +29,24 @@ class Image:
 
 
 # --- Low Level Functions --- #
+<<<<<<< HEAD
+=======
+# assume numpy arrays
+
+def value_replace(value, check, new=0):
+    if value == check:
+        return new
+    return value
+
+>>>>>>> dev-deepixel
 
 def color_log(value, f=1024):
-    return math.log(1 + value*f, 1 + f)
+    return np.log(1 + value * f) / np.log(1 + f)
 
 
 def color_sigmoid(value, alpha=0.2):
-    sig = 1.0 / (1.0 + math.pow(math.e, -(value-0.5)/alpha))
-    return (sig - 0.5) * 1.0 / (1.0 - 2.0 / (1.0 + math.pow(math.e, 0.5 / alpha))) + 0.5
+    sig = 1.0 / (1.0 + np.exp( -(value - 0.5) / alpha))
+    return (sig - 0.5) * 1.0 / (1.0 - 2.0 / (1.0 + np.exp(0.5 / alpha))) + 0.5
 
 
 def colormap(data, bit_depth, name=None):
@@ -50,8 +60,30 @@ def colormap(data, bit_depth, name=None):
         return colormap_grey(data, bit_depth)
 
 
+def colormap_grey(data, max_color):
+    return (data * max_color).astype(int)
+
+
+def normalize(data):
+    maximum = data.max()
+    minimum = data.min()
+    if maximum == minimum:
+        print('Error: min=max')
+    return (data - minimum) / (maximum - minimum)
+
+
+def normalize_reference(data, reference):
+    # usually: reference = max_iteration
+    return data / reference
+
+
 def colormap_grey(data, bit_depth):
     return [int(value * (2**bit_depth-1)) for value in data]
+
+
+def flatten(data):
+    # keep old code
+    return [[i for rgba in row for i in rgba[:-1]] for row in data]
 
 
 # --- Export Functions --- #
