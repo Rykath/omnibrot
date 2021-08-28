@@ -4,6 +4,7 @@
 from libc.stdint cimport uint32_t as INT
 NUM_SIZE = 4
 
+from .deepixel cimport *
 from omnibrot.common.complex cimport ComplexNumber
 
 
@@ -26,6 +27,8 @@ cdef ComplexNumber[FPHPN] cCFPHPN(object value) except *:
         return (<pyCFPHPN> value).cobj
     elif isinstance(value, complex):
         return ComplexNumber[FPHPN](cFPHPN(value.real), cFPHPN(value.imag))
+    elif isinstance(value, tuple) and len(value) == 2:
+        return ComplexNumber[FPHPN](cFPHPN(value[0]), cFPHPN(value[1]))
     else:
         return ComplexNumber[FPHPN](cFPHPN(value))
 

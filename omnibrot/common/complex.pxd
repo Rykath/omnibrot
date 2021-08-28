@@ -1,6 +1,6 @@
 # distutils: language = c++
 
-cdef extern from "../common/complex.hpp":
+cdef extern from "complex.hpp":
     cdef cppclass ComplexNumber[BaseType]:
         BaseType real
         BaseType imag
@@ -8,6 +8,9 @@ cdef extern from "../common/complex.hpp":
         ComplexNumber() except +
         ComplexNumber(BaseType) except +
         ComplexNumber(BaseType, BaseType) except +
+        #ComplexNumber[OtherBaseType](ComplexNumber[OtherBaseType]) except +
+        #ComplexNumber[OtherType](OtherType) except +
+        #ComplexNumber[OtherType](OtherType, OtherType) except +
     
     ComplexNumber[BaseType] operator+[BaseType] (ComplexNumber[BaseType], ComplexNumber[BaseType])
     ComplexNumber[BaseType] operator-[BaseType] (ComplexNumber[BaseType], ComplexNumber[BaseType])

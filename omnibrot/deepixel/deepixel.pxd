@@ -1,8 +1,8 @@
 # distutils: language = c++
+
 from libc.stdint cimport uint32_t as INT
 
 from omnibrot.common.complex cimport ComplexNumber
-from omnibrot.deepixel.deepixel cimport FPHPN
 
 cdef extern from "deepixel.hpp":
     cdef cppclass FPHPN:
@@ -26,21 +26,4 @@ cdef extern from "deepixel.hpp":
     ComplexNumber[FPHPN] next_iteration_opt(ComplexNumber[FPHPN], ComplexNumber[FPHPN])
     bint calc_esc_opt(ComplexNumber[FPHPN])
 
-
-cdef FPHPN cFPHPN(object) except +
-cdef ComplexNumber[FPHPN] cCFPHPN(object) except +
-
-
-cdef class pyFPHPN:
-    cdef FPHPN cobj
-
-    @staticmethod
-    cdef pyFPHPN wrap(FPHPN)
-
-
-cdef class pyCFPHPN:
-    cdef ComplexNumber[FPHPN] cobj
-
-    @staticmethod
-    cdef pyCFPHPN wrap(ComplexNumber[FPHPN])
 
