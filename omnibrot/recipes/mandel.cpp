@@ -77,7 +77,7 @@ void mandel(long array[], ComplexNumber<FPHPN> center, ComplexNumber<double> ran
 
       // continue with standard mandelbrot (with D = Z + dZ)
       if (n >= Icen) {
-        array[i * shape.real + r] = Icen;// + escapetime(center + ComplexNumber<FPHPN>(dC), Zcen[Icen] + ComplexNumber<FPHPN>(dZ), Imax - Icen);
+        array[i * shape.real + r] = Icen + escapetime(center + ComplexNumber<FPHPN>(dC), Zcen[Icen] + ComplexNumber<FPHPN>(dZ), Imax - Icen);
       }
     }
   }
