@@ -8,6 +8,9 @@ from Cython.Build import cythonize
 
 if __name__ == "__main__":
     setup(
-    #    ext_modules = cythonize("deepixel/pyFPHPN.pyx")
+        ext_modules = cythonize([
+            "omnibrot/deepixel/pyFPHPN.pyx", 
+            "omnibrot/recipes/pyMandel.pyx",
+            ])
     )
 
