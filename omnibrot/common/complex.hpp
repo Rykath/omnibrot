@@ -95,13 +95,13 @@ bool calc_esc_ref(ComplexNumber<BaseType> X){
   return norm(X) >= 4;
 }
 
-template <class BaseType>
-int escapetime(ComplexNumber<BaseType> C, ComplexNumber<BaseType> D, int maxI){
+template <typename INT, class BaseType>
+INT escapetime(ComplexNumber<BaseType> C, ComplexNumber<BaseType> D, INT maxI){
   ComplexNumber<BaseType> Z = D;
   if (calc_esc(Z)){
     return 0;
   }
-  for (int iter=1; iter<maxI; iter++){
+  for (INT iter=1; iter<maxI; iter++){
     Z = next_iteration(Z,C);
     if (calc_esc(Z)){
       return iter;

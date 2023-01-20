@@ -31,8 +31,8 @@
 #define PROGRAM_KEYWORDS "FPHPN, Relative"
 #define PROGRAM_VERSION "1.0.0"
 
-#define TYPE_ITER uint16_t
-#define TYPE_ITER_ASDF "uint16"
+#define TYPE_ITER uint32_t
+#define TYPE_ITER_ASDF "uint32"
 #define ASDF_BYTEORDER "little"
 #define PROGRESS_INTERVAL 8
 #define ITERATION_CAP_FRACTION 1
@@ -77,15 +77,15 @@ int main(int argc, char** argv){
   strftime(timestamp,20,"%Y-%m-%dT%H:%M:%S",ts);
 
   // === CALCULATION PART I === //
-  ComplexNumber<FPHPN> Zcen [maxIter];
-  double esc[maxIter];
+  ComplexNumber<FPHPN>* Zcen = (ComplexNumber<FPHPN>*) malloc(maxIter * sizeof(ComplexNumber<FPHPN>));
+  double* esc = (double*) malloc(maxIter * sizeof(double));
   TYPE_ITER Icen = maxIter;
   TYPE_ITER Icap = maxIter;
 
   Zcen[0] = center;
   esc[0] = 4 - double(norm(Zcen[0]));
   printf("Reference\n");
-  for (int i=0; i<maxIter-1; i++){
+  for (TYPE_ITER i=0; i<maxIter-1; i++){
     Zcen[i+1] = next_iteration(Zcen[i],center);
     esc[i+1] = 4 - double(norm(Zcen[i+1]));
     if (esc[i+1] < 0) {
@@ -186,7 +186,7 @@ int main(int argc, char** argv){
       // continue with exact calculation
       Ce = center + ComplexNumber<FPHPN>(dC);
       Ze = Zcen[Icap] + ComplexNumber<FPHPN>(dZ);
-      int i = Icap + escapetime(Ce, Ze, maxIter - Icap);
+      TYPE_ITER i = Icap + escapetime(Ce, Ze, maxIter - Icap);
       fwrite(&i, sizeof(TYPE_ITER), 1, fptr);
     }
   }

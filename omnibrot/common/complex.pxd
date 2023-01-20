@@ -23,5 +23,5 @@ cdef extern from "complex.hpp":
     ComplexNumber[BaseType] next_iteration[BaseType] (ComplexNumber[BaseType], ComplexNumber[BaseType])
     bint calc_esc_ref[BaseType] (ComplexNumber[BaseType])
     bint calc_esc[BaseType] (ComplexNumber[BaseType])
-    int escapetime[BaseType] (ComplexNumber[BaseType], ComplexNumber[BaseType], int)
+    INT escapetime[INT, BaseType] (ComplexNumber[BaseType], ComplexNumber[BaseType], INT)
 

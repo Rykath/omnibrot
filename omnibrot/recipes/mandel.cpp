@@ -10,25 +10,9 @@
 #include "../deepixel/deepixel.hpp"
 #include "../deepixel/relative.hpp"
 
+#include <cstdlib>
+
 using namespace std;
-
-// --- standard mandelbrot --- //
-// generic reference implementation (with double or FPHPN)
-// using `escapetime`
-// not optimized
-// ToDo: add template e.g.: template <typename INT, class BaseType>
-//   void mandel(INT* array, ComplexNumber<BaseType> center, ComplexNumber<BaseType> range, ComplexNumber<int> shape, INT maxIter){
-void mandel(long* array, ComplexNumber<FPHPN> center, ComplexNumber<FPHPN> range, ComplexNumber<int> shape, long maxIter){
-  ComplexNumber<FPHPN> D, C;
-
-  for (int i = 0; i < shape.imag; i++){
-    C.imag = center.imag + range.imag * FPHPN((i + 0.5) / shape.imag - 0.5);
-    for (int r = 0; r < shape.real; r++){
-      C.real = center.real + range.real * FPHPN((r + 0.5) / shape.real - 0.5);
-      array[i * shape.real + r] = escapetime(C, D, maxIter);
-    }
-  }
-}
 
 // --- relative to center path --- //
 // the escape path of the center sample is calculated with high accuracy
@@ -39,8 +23,8 @@ void mandel(long* array, ComplexNumber<FPHPN> center, ComplexNumber<FPHPN> range
 //   template <typename INT, class CenterBaseType, class RelativeBaseType>
 //   void mandel(INT array[], ComplexNumber<CenterBaseType> center, ComplexNumber<RelativeBaseType> range, ComplexNumber<int> shape, INT Imax){
 void mandel(long array[], ComplexNumber<FPHPN> center, ComplexNumber<double> range, ComplexNumber<int> shape, long Imax){
-  ComplexNumber<FPHPN> Zcen [Imax];
-  double radius[Imax];
+  ComplexNumber<FPHPN>* Zcen = (ComplexNumber<FPHPN>*) malloc(Imax * sizeof(ComplexNumber<FPHPN>));
+  double* radius = (double*) malloc(Imax * sizeof(double));
   long Icen = Imax;
   ComplexNumber<double> dZ, dC;
 
@@ -63,7 +47,7 @@ void mandel(long array[], ComplexNumber<FPHPN> center, ComplexNumber<double> ran
     for (int r = 0; r < shape.real; r++){
       dC.real = range.real * double((r + 0.5) / shape.real - 0.5);
       dZ = 0; // dD
-      array[i * shape.real + r] = 256;
+      //array[i * shape.real + r] = 256; // why?
 
       // relative calculation
       long n = 0;
