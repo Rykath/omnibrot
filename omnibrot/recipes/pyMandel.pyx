@@ -9,7 +9,7 @@ from omnibrot.common.complex cimport ComplexNumber
 from omnibrot.deepixel.pyFPHPN cimport FPHPN, cFPHPN, pyFPHPN, cCFPHPN, pyCFPHPN
 
 def pyMandel(center, ranges, shape, maxIter, flavor="default"):
-    data = np.ndarray(shape, dtype=long)
+    data = np.ndarray(shape[::-1], dtype=long)
     meta = {"type": "pyMandel", "center": center, "range": ranges, "shape": shape, "maximum iteration": maxIter, "flavor": flavor}
 
     cdef long [:, ::1] view = data
